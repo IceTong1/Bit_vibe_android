@@ -5,7 +5,6 @@ import com.google.gson.annotations.SerializedName;
 public class BinancePriceResponse {
     @SerializedName("symbol")
     private String symbol;
-
     @SerializedName("price")
     private String price; // String car Binance renvoie une valeur décimale comme texte
 
