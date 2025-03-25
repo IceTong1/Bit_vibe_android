@@ -19,7 +19,6 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 import android.content.SharedPreferences;
-import android.preference.PreferenceManager;
 
 
 
@@ -55,13 +54,29 @@ public class MainActivity extends AppCompatActivity {
         // Charge le layout de l'activité depuis activity_main.xml
         setContentView(R.layout.activity_main);
 
-        prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE);//pour les settings
+        prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE); // Pour les settings
         SharedPreferences.Editor editor = prefs.edit();
-        editor.putInt(Constants.PREF_MIN_VIBRATION_INTERVAL, 500); // Intervalle minimum de vibration : 500ms
-        editor.putInt(Constants.PREF_VIBRATION_INTENSITY, 75);     // Intensité de vibration : 75%
-        editor.putString(Constants.PREF_CURRENCY, "EUR");          // Devise : Euros
-        editor.putString(Constants.PREF_LANGUAGE, "fr");           // Langue : Français
+        // Définir les valeurs par défaut seulement si elles n'existent pas
+        if (!prefs.contains(Constants.PREF_MIN_VIBRATION_INTERVAL)) {
+            editor.putInt(Constants.PREF_MIN_VIBRATION_INTERVAL, 5000); // Intervalle minimum de vibration : 5000ms
+        }
+        if (!prefs.contains(Constants.PREF_VIBRATION_INTENSITY)) {
+            editor.putInt(Constants.PREF_VIBRATION_INTENSITY, 25);     // Intensité de vibration : 75%
+        }
+        if (!prefs.contains(Constants.PREF_CURRENCY)) {
+            editor.putString(Constants.PREF_CURRENCY, "EUR");          // Devise : Euros
+        }
+        if (!prefs.contains(Constants.PREF_LANGUAGE)) {
+            editor.putString(Constants.PREF_LANGUAGE, "fr");           // Langue : Français
+        }
+
         editor.apply(); // Sauvegarde les modifications
+        Log.d("MainActivity", "Valeurs sauvegardées : interval="
+                + prefs.getInt(Constants.PREF_MIN_VIBRATION_INTERVAL, -1)
+                + ", intensity=" + prefs.getInt(Constants.PREF_VIBRATION_INTENSITY, -1)
+                + ", currency=" + prefs.getString(Constants.PREF_CURRENCY, "N/A")
+                + ", language=" + prefs.getString(Constants.PREF_LANGUAGE, "N/A"));
+
 
         // Associe les vues aux éléments du layout
         bitcoinPriceTextView = findViewById(R.id.bitcoinPriceTextView);
