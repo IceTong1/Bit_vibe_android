@@ -56,7 +56,12 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE);//pour les settings
-
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putInt(Constants.PREF_MIN_VIBRATION_INTERVAL, 500); // Intervalle minimum de vibration : 500ms
+        editor.putInt(Constants.PREF_VIBRATION_INTENSITY, 75);     // Intensité de vibration : 75%
+        editor.putString(Constants.PREF_CURRENCY, "EUR");          // Devise : Euros
+        editor.putString(Constants.PREF_LANGUAGE, "fr");           // Langue : Français
+        editor.apply(); // Sauvegarde les modifications
 
         // Associe les vues aux éléments du layout
         bitcoinPriceTextView = findViewById(R.id.bitcoinPriceTextView);
