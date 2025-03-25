@@ -69,13 +69,26 @@ public class MainActivity extends AppCompatActivity {
         if (!prefs.contains(Constants.PREF_LANGUAGE)) {
             editor.putString(Constants.PREF_LANGUAGE, "fr");           // Langue : Français
         }
-
         editor.apply(); // Sauvegarde les modifications
+
+        // Lire les valeurs des paramètres //////////////////////////////////////////////////////////////////////////////
+        int minInterval = prefs.getInt(Constants.PREF_MIN_VIBRATION_INTERVAL, 5000); // 1000ms par défaut
+        int intensity = prefs.getInt(Constants.PREF_VIBRATION_INTENSITY, 50);       // 50% par défaut
+        String currency = prefs.getString(Constants.PREF_CURRENCY, "USD");         // "USD" par défaut
+        String language = prefs.getString(Constants.PREF_LANGUAGE, "en");         // "en" par défaut
+
+        // Afficher les valeurs dans Logcat pour vérification
+        Log.d("MainActivity", "Intervalle minimum : " + minInterval + "ms");
+        Log.d("MainActivity", "Intensité vibration : " + intensity + "%");
+        Log.d("MainActivity", "Devise : " + currency);
+        Log.d("MainActivity", "Langue : " + language);
+
         Log.d("MainActivity", "Valeurs sauvegardées : interval="
                 + prefs.getInt(Constants.PREF_MIN_VIBRATION_INTERVAL, -1)
                 + ", intensity=" + prefs.getInt(Constants.PREF_VIBRATION_INTENSITY, -1)
                 + ", currency=" + prefs.getString(Constants.PREF_CURRENCY, "N/A")
                 + ", language=" + prefs.getString(Constants.PREF_LANGUAGE, "N/A"));
+        // /////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
         // Associe les vues aux éléments du layout
@@ -107,7 +120,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 fetchBitcoinPrice(); // Récupère le prix
-                handler.postDelayed(this, 5000); // Relance la tâche toutes les 5 secondes
+                handler.postDelayed(this, minInterval); // Relance la tâche toutes les 5 secondes
             }
         };
 
