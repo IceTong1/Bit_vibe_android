@@ -47,6 +47,9 @@ public class MainActivity extends AppCompatActivity {
     // Tolérance par défaut pour les variations (1%)
     private double tolerancePercentage = 1.0;
 
+
+
+
     // Méthode appelée lors de la création de l'activité
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,41 +57,44 @@ public class MainActivity extends AppCompatActivity {
         // Charge le layout de l'activité depuis activity_main.xml
         setContentView(R.layout.activity_main);
 
-        prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE); // Pour les settings
+
+
+        // Créer ou charger les préférences partagées
+        prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE); // Sauvegarder dans un fichier nommé "BitVibePrefs"
+
         SharedPreferences.Editor editor = prefs.edit();
         // Définir les valeurs par défaut seulement si elles n'existent pas
-        if (!prefs.contains(Constants.PREF_MIN_VIBRATION_INTERVAL)) {
-            editor.putInt(Constants.PREF_MIN_VIBRATION_INTERVAL, 5000); // Intervalle minimum de vibration : 5000ms
+        if (!prefs.contains("refresh_interval")) {
+            editor.putInt("refresh_interval", 5); // Intervalle minimum de vibration : 5000ms
         }
-        if (!prefs.contains(Constants.PREF_VIBRATION_INTENSITY)) {
-            editor.putInt(Constants.PREF_VIBRATION_INTENSITY, 25);     // Intensité de vibration : 75%
+        if (!prefs.contains("vibration_intensity")) {
+            editor.putInt("vibration_intensity", 2);     // Intensité de vibration : niveau 2
         }
-        if (!prefs.contains(Constants.PREF_CURRENCY)) {
-            editor.putString(Constants.PREF_CURRENCY, "EUR");          // Devise : Euros
+        if (!prefs.contains("currency")) {
+            editor.putString("currency", "EUR");          // Devise : Euros
         }
-        if (!prefs.contains(Constants.PREF_LANGUAGE)) {
-            editor.putString(Constants.PREF_LANGUAGE, "fr");           // Langue : Français
+        if (!prefs.contains("language")) {
+            editor.putString("language", "fr");           // Langue : Français
         }
         editor.apply(); // Sauvegarde les modifications
 
-        // Lire les valeurs des paramètres //////////////////////////////////////////////////////////////////////////////
-        int minInterval = prefs.getInt(Constants.PREF_MIN_VIBRATION_INTERVAL, 5000); // 1000ms par défaut
-        int intensity = prefs.getInt(Constants.PREF_VIBRATION_INTENSITY, 50);       // 50% par défaut
-        String currency = prefs.getString(Constants.PREF_CURRENCY, "USD");         // "USD" par défaut
-        String language = prefs.getString(Constants.PREF_LANGUAGE, "en");         // "en" par défaut
 
-        // Afficher les valeurs dans Logcat pour vérification
-        Log.d("MainActivity", "Intervalle minimum : " + minInterval + "ms");
-        Log.d("MainActivity", "Intensité vibration : " + intensity + "%");
-        Log.d("MainActivity", "Devise : " + currency);
-        Log.d("MainActivity", "Langue : " + language);
+        /////////////////////////// Lire les valeurs des paramètres pour debug //////////////////////////////////
+        int minInterval = prefs.getInt("refresh_interval", -1);    // -1 si pas de valeur sauvegardée
+        int intensity = prefs.getInt("vibration_intensity", -1);
+        String currency = prefs.getString("currency", "null");   //null si pas de valeur sauvegardée
+        String language = prefs.getString("language", "null");
 
-        Log.d("MainActivity", "Valeurs sauvegardées : interval="
-                + prefs.getInt(Constants.PREF_MIN_VIBRATION_INTERVAL, -1)
-                + ", intensity=" + prefs.getInt(Constants.PREF_VIBRATION_INTENSITY, -1)
-                + ", currency=" + prefs.getString(Constants.PREF_CURRENCY, "N/A")
-                + ", language=" + prefs.getString(Constants.PREF_LANGUAGE, "N/A"));
-        // /////////////////////////////////////////////////////////////////////////////////////////////////////
+        Log.d("MainActivity", "VALEURS SAUVEGARDEES : refresh_interval="
+                + minInterval
+                + ", vibration_intensity=" + intensity
+                + ", currency=" + currency
+                + ", language=" + language);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
 
 
         // Associe les vues aux éléments du layout
@@ -110,6 +116,9 @@ public class MainActivity extends AppCompatActivity {
                 .addConverterFactory(GsonConverterFactory.create()) // Utilise Gson pour parser le JSON
                 .build();
 
+
+
+
         // Crée une instance de l'interface BinanceApi
         binanceApi = retrofit.create(BinanceApi.class);
 
@@ -120,7 +129,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 fetchBitcoinPrice(); // Récupère le prix
-                handler.postDelayed(this, minInterval); // Relance la tâche toutes les 5 secondes
+                handler.postDelayed(this, minInterval * 1000); // Relance la tâche toutes les 5 secondes
             }
         };
 

@@ -1,4 +1,28 @@
 <resources>
     <string name="app_name">BitVibe</string>
     <string name="title_activity_settings">SettingsActivity</string>
+
+
+    <!-- Currency array -->
+    <string-array name="currency_array">
+        <item>USD</item>
+        <item>EUR</item>
+        <!-- Add more currencies as needed -->
+    </string-array>
+
+
+    <!-- Vibration Intensity array -->
+    <string-array name="vibration_intensity_array">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+
+
+    <!-- Language array -->
+    <string-array name="language_array">
+        <item>english</item>
+        <item>french</item>
+    </string-array>
+
 </resources>
