@@ -25,4 +25,14 @@
         <item>french</item>
     </string-array>
 
+
+       <!-- Other string resources -->
+    <string name="refresh_interval">Refresh Interval (seconds):</string>
+    <string name="currency">Currency:</string>
+    <string name="vibration_intensity">Vibration Intensity:</string>
+    <string name="language">Language:</string>
+    <string name="tolerance_percentage">tolerance Percentage:</string>
+    <string name="save">Save</string>
+    <string name="tolerance_percentage_hint">Enter tolerance percentage</string>
+
 </resources>

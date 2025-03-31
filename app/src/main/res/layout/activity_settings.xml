@@ -17,6 +17,20 @@
         android:layout_height="wrap_content"
         android:inputType="number" />
 
+
+    <!-- Tolerance Percentage -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Tolerance Percentage:" />
+
+    <EditText
+        android:id="@+id/tolerance_percentage_edittext"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="numberDecimal" />
+
+
     <!-- Currency Selection -->
     <TextView
         android:layout_width="wrap_content"

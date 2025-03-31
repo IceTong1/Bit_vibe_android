@@ -4,6 +4,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -44,10 +45,8 @@ public class MainActivity extends AppCompatActivity {
     private Runnable priceRunnable;
     // Dernier prix connu du Bitcoin (-1 au départ)
     private double lastPrice = -1;
-    // Tolérance par défaut pour les variations (1%)
-    private double tolerancePercentage = 1.0;
-
-
+    // Intervalle minimum entre les mises à jour du prix (en secondes)
+    private int minInterval;
 
 
     // Méthode appelée lors de la création de l'activité
@@ -57,6 +56,14 @@ public class MainActivity extends AppCompatActivity {
         // Charge le layout de l'activité depuis activity_main.xml
         setContentView(R.layout.activity_main);
 
+        // Associer le bouton au code
+        Button settingsButton = findViewById(R.id.settingsButton);
+
+        // Ajouter le listener pour ouvrir SettingsActivity
+        settingsButton.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+            startActivity(intent);
+        });
 
 
         // Créer ou charger les préférences partagées
@@ -76,6 +83,9 @@ public class MainActivity extends AppCompatActivity {
         if (!prefs.contains("language")) {
             editor.putString("language", "fr");           // Langue : Français
         }
+        if (!prefs.contains("tolerance_percentage")) {
+            editor.putFloat("tolerance_percentage", (float) 0.01);
+        }
         editor.apply(); // Sauvegarde les modifications
 
 
@@ -84,23 +94,19 @@ public class MainActivity extends AppCompatActivity {
         int intensity = prefs.getInt("vibration_intensity", -1);
         String currency = prefs.getString("currency", "null");   //null si pas de valeur sauvegardée
         String language = prefs.getString("language", "null");
+        float tolerancePercentage = prefs.getFloat("tolerance_percentage", -1);
 
         Log.d("MainActivity", "VALEURS SAUVEGARDEES : refresh_interval="
                 + minInterval
                 + ", vibration_intensity=" + intensity
                 + ", currency=" + currency
-                + ", language=" + language);
+                + ", language=" + language
+                + ", tolerance_percentage=" + tolerancePercentage);
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
 
 
         // Associe les vues aux éléments du layout
         bitcoinPriceTextView = findViewById(R.id.bitcoinPriceTextView);
-        toleranceEditText = findViewById(R.id.toleranceEditText);
-        updateToleranceButton = findViewById(R.id.updateToleranceButton);
 
         // Vérifie si les permissions Bluetooth sont accordées, sinon les demande
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ||
@@ -117,8 +123,6 @@ public class MainActivity extends AppCompatActivity {
                 .build();
 
 
-
-
         // Crée une instance de l'interface BinanceApi
         binanceApi = retrofit.create(BinanceApi.class);
 
@@ -132,21 +136,9 @@ public class MainActivity extends AppCompatActivity {
                 handler.postDelayed(this, minInterval * 1000); // Relance la tâche toutes les 5 secondes
             }
         };
+////////////////////////////////a supprr
 
-        // Définit l'action du bouton pour mettre à jour la tolérance
-        updateToleranceButton.setOnClickListener(v -> {
-            String toleranceInput = toleranceEditText.getText().toString();
-            if (!toleranceInput.isEmpty()) { // Vérifie que l'entrée n'est pas vide
-                try {
-                    tolerancePercentage = Double.parseDouble(toleranceInput); // Met à jour la tolérance
-                    Log.d(TAG, "Tolérance mise à jour : " + tolerancePercentage + "%");
-                } catch (NumberFormatException e) { // Gère les erreurs de conversion
-                    Log.e(TAG, "Entrée invalide pour la tolérance");
-                    toleranceEditText.setText(String.valueOf(tolerancePercentage)); // Restaure la valeur précédente
-                }
-            }
-        });
-
+/////////////////////////////////////////
         // Lance la tâche de mise à jour du prix
         handler.post(priceRunnable);
     }
@@ -162,23 +154,29 @@ public class MainActivity extends AppCompatActivity {
                 // Vérifie si la réponse est valide
                 if (response.isSuccessful() && response.body() != null) {
                     double currentPrice = response.body().getPrice(); // Récupère le prix actuel
-                    Log.d(TAG, "Prix du Bitcoin : " + currentPrice);
+                    Log.d(TAG, "Prix du Bitcoin : " + currentPrice + "lastPrice : " + lastPrice);
                     bitcoinPriceTextView.setText("Prix du Bitcoin : $" + currentPrice); // Met à jour l'affichage
 
                     // Si un dernier prix existe, calcule la variation
+                    float tolerancePercentage = prefs.getFloat("tolerance_percentage", -1); // Récupère la tolérance
                     if (lastPrice != -1) {
                         double percentageChange = ((currentPrice - lastPrice) / lastPrice) * 100; // Variation en %
                         if (percentageChange > tolerancePercentage) { // Si hausse significative
+                            lastPrice = currentPrice; // Met à jour le dernier prix
                             Log.d(TAG, "Hausse détectée (+" + String.format("%.2f", percentageChange) + "%)");
                             Toast.makeText(MainActivity.this, "Hausse détectée (+" + String.format("%.2f", percentageChange) + "%)", Toast.LENGTH_SHORT).show();
                         } else if (percentageChange < -tolerancePercentage) { // Si baisse significative
+                            lastPrice = currentPrice; // Met à jour le dernier prix
                             Log.d(TAG, "Baisse détectée (" + String.format("%.2f", percentageChange) + "%)");
                             Toast.makeText(MainActivity.this, "Baisse détectée (" + String.format("%.2f", percentageChange) + "%)", Toast.LENGTH_SHORT).show();
                         } else { // Si stable
                             Log.d(TAG, "Prix stable (" + String.format("%.2f", percentageChange) + "%)");
                         }
+                    }else{
+                        lastPrice = currentPrice; // Met à jour le dernier prix si c'est le premier prix récupéré
                     }
-                    lastPrice = currentPrice; // Met à jour le dernier prix
+                    // Le dernier prix n'est pas mis tant qu'il n'y a pas eu de variation significative
+
                 } else { // En cas d'erreur dans la réponse
                     Log.e(TAG, "Erreur API : " + response.code());
                     bitcoinPriceTextView.setText("Erreur API : " + response.code());
@@ -213,5 +211,42 @@ public class MainActivity extends AppCompatActivity {
                 bitcoinPriceTextView.setText("Bluetooth requis");
             }
         }
+    }
+
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Arrêter l'ancien runnable s'il existe
+        stopPriceUpdates();
+        // Relire les paramètres depuis les préférences
+        loadSettings();
+        // Redémarrer le runnable avec le nouveau refresh_interval
+        startPriceUpdates();
+    }
+
+    // Méthode pour démarrer les mises à jour du prix
+    private void startPriceUpdates() {
+        // Définir une tâche répétitive pour récupérer le prix
+        priceRunnable = new Runnable() {
+            @Override
+            public void run() {
+                fetchBitcoinPrice(); // Récupère le prix
+                handler.postDelayed(this, minInterval * 1000); // Relance la tâche toutes les 5 secondes
+            }
+        };
+        // Lance la tâche de mise à jour du prix
+        handler.post(priceRunnable);
+    }
+
+    // Méthode pour arrêter les mises à jour du prix
+    private void stopPriceUpdates() {
+        if (handler != null && priceRunnable != null) {
+            handler.removeCallbacks(priceRunnable);
+        }
+    }
+
+    private void loadSettings() {
+        minInterval = prefs.getInt("refresh_interval", 5); // Relit la valeur
     }
 }

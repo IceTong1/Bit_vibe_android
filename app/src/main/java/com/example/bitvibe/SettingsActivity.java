@@ -13,6 +13,7 @@ import android.util.Log;
 
 public class SettingsActivity extends AppCompatActivity {
     private EditText refreshIntervalEditText;
+    private EditText tolerancePercentageEditText;
     private Spinner currencySpinner;
     private Spinner vibrationIntensitySpinner;
     private Spinner languageSpinner;
@@ -25,17 +26,13 @@ public class SettingsActivity extends AppCompatActivity {
 
         // Initialize SharedPreferences
         prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE); // Pour les settings
-        /// //////////////repair db//////////////////////////////////////////////////////////
-        SharedPreferences.Editor editor = prefs.edit();
-        editor.putInt("vibration_intensity", 2);
-        editor.apply();
-        /// /////////////////////////////////////////////////////////////////////////////////
 
 
 
 
         // Bind UI elements
         refreshIntervalEditText = findViewById(R.id.refresh_interval_edittext);
+        tolerancePercentageEditText = findViewById(R.id.tolerance_percentage_edittext);
         currencySpinner = findViewById(R.id.currency_spinner);
         vibrationIntensitySpinner = findViewById(R.id.vibration_intensity_spinner);
         languageSpinner = findViewById(R.id.language_spinner);
@@ -43,6 +40,9 @@ public class SettingsActivity extends AppCompatActivity {
         // Load current settings
         int currentInterval = prefs.getInt("refresh_interval", 5); // Default: 5 seconds
         refreshIntervalEditText.setText(String.valueOf(currentInterval));
+
+        float currentTolerance = prefs.getFloat("tolerance_percentage", 1.111f); // Default tolerance: 1.111
+        tolerancePercentageEditText.setText(String.valueOf(currentTolerance));
 
         // Set up the currency spinner
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
@@ -77,12 +77,17 @@ public class SettingsActivity extends AppCompatActivity {
         int languagePosition = languageAdapter.getPosition(currentLanguage);
         languageSpinner.setSelection(languagePosition);
 
+
+        //add edit text for tolerance percentage
+
+
         //Log data for debug
         Log.d("SettingsActivity",
                 "Loaded settings - Refresh Interval: " + currentInterval
                 + " seconds, Currency: " + currentCurrency
                 + ", Vibration Intensity: " + currentIntensity
-                + ", Language: " + currentLanguage);
+                + ", Language: " + currentLanguage
+                + ", Tolerance Percentage: " + currentTolerance);
 
         // Save button listener
         Button saveButton = findViewById(R.id.save_button);
@@ -102,6 +107,13 @@ public class SettingsActivity extends AppCompatActivity {
         if (!intervalStr.isEmpty()) {
             int interval = Integer.parseInt(intervalStr);
             editor.putInt("refresh_interval", interval);
+        }
+
+        // Save tolerance percentage
+        String toleranceStr = tolerancePercentageEditText.getText().toString();
+        if (!toleranceStr.isEmpty()) {
+            float tolerance = Float.parseFloat(toleranceStr);
+            editor.putFloat("tolerance_percentage", tolerance);
         }
 
         // Save currency
@@ -124,7 +136,8 @@ public class SettingsActivity extends AppCompatActivity {
                 "Saved settings - Refresh Interval: " + prefs.getInt("refresh_interval", -1)
                 + " seconds, Currency: " + prefs.getString("currency", "null")
                 + ", Vibration Intensity: " + prefs.getInt("vibration_intensity", -1)
-                + ", Language: " + prefs.getString("language", "null"));
+                + ", Language: " + prefs.getString("language", "null")
+                + ", Tolerance Percentage: " + prefs.getFloat("tolerance_percentage", -1.0f));
     }
 }
 
