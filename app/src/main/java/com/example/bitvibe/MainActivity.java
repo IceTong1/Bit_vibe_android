@@ -7,8 +7,6 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -20,6 +18,9 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 import android.content.SharedPreferences;
+
+import android.os.Handler;
+import android.os.Looper;
 
 
 // Activité principale de l'application BitVibe
@@ -35,16 +36,16 @@ public class MainActivity extends AppCompatActivity {
     private TextView bitcoinPriceTextView;
     // EditText pour entrer la tolassociatedérance de variation
     private EditText toleranceEditText;
-    // Bouton pour mettre à jour la tolérance
-    private Button updateToleranceButton;
-    // Handler pour exécuter des tâches répétitives sur le thread principal
-    private Handler handler;
+    // Handler pour exécuter des tâches sur le thread principal
+    private Handler handler = new Handler();
     // Runnable pour récupérer le prix périodiquement
-    private Runnable priceRunnable;
+    private Runnable runnable;
     // Dernier prix connu du Bitcoin (-1 au départ)
     private double lastPrice = -1;
     // Intervalle minimum entre les mises à jour du prix (en secondes)
     private int minInterval;
+    // Variable pour vérifier si le Runnable a été initialisé
+    private boolean asBeenInitialized = false;
 
 
     // Méthode appelée lors de la création de l'activité
@@ -127,24 +128,34 @@ public class MainActivity extends AppCompatActivity {
         binanceApi = retrofit.create(BinanceApi.class);
 
 
-        /// //////////////////////////// A AMELIORER ///////////////////////////////////////////
-        // Initialise le Handler pour exécuter des tâches sur le thread principal
-        handler = new Handler(Looper.getMainLooper());
-        priceRunnable = new Runnable() {
-            @Override
-            public void run() {
-                fetchBitcoinPrice(); // Récupère le prix et vérifie la variation
-                minInterval = prefs.getInt("refresh_interval", 5); // Reload the interval
-                Log.d(TAG, "NEW RUN LAUCHEEEEED. minIterval maj : " + minInterval);
-                handler.postDelayed(this, minInterval * 1000L); // Relance la tâche toutes les 5 secondes
-            }
-        };
-        handler.post(priceRunnable);
-        /////////////////////////////////////////////////////////////////////////////////////////
+        //////////////////////////////// A AMELIORER ///////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////////////////
+        initializeLoop();
     }
 
 
+    private void initializeLoop() {
+        // Check if the Runnable has already been initialized
+        if (this.asBeenInitialized == false) {
+            this.asBeenInitialized = true; // Set the flag to true to indicate it has been initialized
+            Log.d(TAG, "FIRST TIME AND LAST"); //todo : i saw it more than once
+            runnable = new Runnable() {
+                @Override
+                public void run() {
+                    minInterval = prefs.getInt("refresh_interval", 5);
+                    fetchBitcoinPrice(); // Fetch the price
+                    handler.postDelayed(this, minInterval * 1000L); // Schedule the next fetch
+                }
+            };
+            handler.post(runnable);
+        }
+    }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        handler.removeCallbacks(runnable);
+    }
 
     // Méthode pour récupérer le prix du Bitcoin depuis l'API de Binance et afficher la variation
     private void fetchBitcoinPrice() {
@@ -175,7 +186,7 @@ public class MainActivity extends AppCompatActivity {
                         } else { // Si stable
                             Log.d(TAG, "Prix stable (" + String.format("%.2f", percentageChange) + "%)");
                         }
-                    }else{
+                    } else {
                         lastPrice = currentPrice; // Met à jour le dernier prix si c'est le premier prix récupéré
                     }
                     // Le dernier prix n'est pas mis tant qu'il n'y a pas eu de variation significative
@@ -206,27 +217,5 @@ public class MainActivity extends AppCompatActivity {
                 bitcoinPriceTextView.setText("Bluetooth requis");
             }
         }
-    }
-
-
-    // Méthode appelée lorsque l'activité reprend
-    @Override
-    protected void onResume() {
-        super.onResume();
-    }
-
-    // Méthode pour arrêter les mises à jour du prix
-    private void stopPriceUpdates() {
-        if (handler != null && priceRunnable != null) {
-            handler.removeCallbacks(priceRunnable);
-        }
-    }
-
-    // Méthode appelée lors de la destruction de l'activité
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        // Arrête la tâche répétitive pour éviter les fuites de mémoire
-        stopPriceUpdates();
     }
 }
