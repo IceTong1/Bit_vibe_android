@@ -1,5 +1,6 @@
 package com.example.bitvibe;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
@@ -24,9 +25,17 @@ public class SettingsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
 
-        // Initialize SharedPreferences
-        prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE); // Pour les settings
+        // Associer le bouton au code
+        Button settingsButton = findViewById(R.id.mainActivityButton);
 
+        // Ajouter le listener pour ouvrir SettingsActivity
+        settingsButton.setOnClickListener(v -> {
+            Intent intent = new Intent(SettingsActivity.this, MainActivity.class);
+            startActivity(intent);
+        });
+
+        // Initialize SharedPreferences
+        prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE); // charger la base de données des preferences (parametres) sauvegardées
 
 
 
