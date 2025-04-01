@@ -128,6 +128,8 @@ public class MainActivity extends AppCompatActivity {
 
         // Initialise le Handler pour exécuter des tâches sur le thread principal
         handler = new Handler(Looper.getMainLooper());
+
+        ////////////////////////////////a supprr
         // Définit une tâche répétitive pour récupérer le prix
         priceRunnable = new Runnable() {
             @Override
@@ -136,9 +138,8 @@ public class MainActivity extends AppCompatActivity {
                 handler.postDelayed(this, minInterval * 1000); // Relance la tâche toutes les 5 secondes
             }
         };
-////////////////////////////////a supprr
-
 /////////////////////////////////////////
+
         // Lance la tâche de mise à jour du prix
         handler.post(priceRunnable);
     }
