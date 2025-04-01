@@ -127,6 +127,7 @@ public class MainActivity extends AppCompatActivity {
         binanceApi = retrofit.create(BinanceApi.class);
 
 
+        /// //////////////////////////// A AMELIORER ///////////////////////////////////////////
         // Initialise le Handler pour exécuter des tâches sur le thread principal
         handler = new Handler(Looper.getMainLooper());
         priceRunnable = new Runnable() {
@@ -139,6 +140,7 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         handler.post(priceRunnable);
+        /////////////////////////////////////////////////////////////////////////////////////////
     }
 
 
