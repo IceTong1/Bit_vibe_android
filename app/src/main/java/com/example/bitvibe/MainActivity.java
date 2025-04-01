@@ -87,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
 
 
         /////////////////////////// Lire les valeurs des paramètres pour debug //////////////////////////////////
-        int minInterval = prefs.getInt("refresh_interval", -1);    // -1 si pas de valeur sauvegardée
+        minInterval = prefs.getInt("refresh_interval", -1);    // -1 si pas de valeur sauvegardée
         int intensity = prefs.getInt("vibration_intensity", -1);
         String currency = prefs.getString("currency", "null");   //null si pas de valeur sauvegardée
         String language = prefs.getString("language", "null");
@@ -105,6 +105,8 @@ public class MainActivity extends AppCompatActivity {
         // Associe les vues aux éléments du layout
         bitcoinPriceTextView = findViewById(R.id.bitcoinPriceTextView);
 
+
+        /// ///////////////////////////BLUETOOTH////////////////////////////////////////////////////
         // Vérifie si les permissions Bluetooth sont accordées, sinon les demande
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ||
                 ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
@@ -112,6 +114,8 @@ public class MainActivity extends AppCompatActivity {
                     new String[]{Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN},
                     REQUEST_BLUETOOTH_PERMISSIONS);
         }
+        ////////////////////////////////////////////////////////////////////////////////////////////
+
 
         // Configure Retrofit pour communiquer avec l'API de Binance
         Retrofit retrofit = new Retrofit.Builder()
@@ -124,16 +128,14 @@ public class MainActivity extends AppCompatActivity {
 
 
         // Initialise le Handler pour exécuter des tâches sur le thread principal
-        loadSettings();
         handler = new Handler(Looper.getMainLooper());
-        // Assurez-vous qu'aucun Runnable n'est en cours d'exécution avant de démarrer un nouveau
-        stopPriceUpdates();
-        // Définir une tâche répétitive pour récupérer le prix
         priceRunnable = new Runnable() {
             @Override
             public void run() {
-                fetchBitcoinPrice(); // Récupère le prix
-                handler.postDelayed(this, minInterval * 1000); // Relance la tâche toutes les 5 secondes
+                fetchBitcoinPrice(); // Récupère le prix et vérifie la variation
+                minInterval = prefs.getInt("refresh_interval", 5); // Reload the interval
+                Log.d(TAG, "NEW RUN LAUCHEEEEED. minIterval maj : " + minInterval);
+                handler.postDelayed(this, minInterval * 1000L); // Relance la tâche toutes les 5 secondes
             }
         };
         handler.post(priceRunnable);
@@ -209,20 +211,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-            // Arrêter l'ancien runnable s'il existe
-            stopPriceUpdates();
-            // Relire les paramètres depuis les préférences
-            loadSettings();
-            // Redémarrer le runnable avec le nouveau refresh_interval
-            startPriceUpdates();    }
-
-    // Méthode pour démarrer les mises à jour du prix
-    private void startPriceUpdates() {
-        //mettre à jour minInterval avec la nouvelle valeur depuis les préférences
-        minInterval = prefs.getInt("refresh_interval", 5);
-
-        // Lance la tâche de mise à jour du prix
-        handler.post(priceRunnable);
     }
 
     // Méthode pour arrêter les mises à jour du prix
@@ -230,11 +218,6 @@ public class MainActivity extends AppCompatActivity {
         if (handler != null && priceRunnable != null) {
             handler.removeCallbacks(priceRunnable);
         }
-    }
-
-    // Méthode pour lire les paramètres depuis les préférences
-    private void loadSettings() {
-        minInterval = prefs.getInt("refresh_interval", 5); // Relit la valeur
     }
 
     // Méthode appelée lors de la destruction de l'activité
