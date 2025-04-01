@@ -22,10 +22,8 @@ import retrofit2.converter.gson.GsonConverterFactory;
 import android.content.SharedPreferences;
 
 
-
 // Activité principale de l'application BitVibe
 public class MainActivity extends AppCompatActivity {
-
     private SharedPreferences prefs;  //pour les settings
     // Constante pour les logs
     private static final String TAG = "MainActivity";
@@ -68,20 +66,19 @@ public class MainActivity extends AppCompatActivity {
 
         // Créer ou charger les préférences partagées
         prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE); // Sauvegarder dans un fichier nommé "BitVibePrefs"
-
         SharedPreferences.Editor editor = prefs.edit();
         // Définir les valeurs par défaut seulement si elles n'existent pas
         if (!prefs.contains("refresh_interval")) {
-            editor.putInt("refresh_interval", 5); // Intervalle minimum de vibration : 5000ms
+            editor.putInt("refresh_interval", 5);           // Intervalle minimum de vibration : 5000ms
         }
         if (!prefs.contains("vibration_intensity")) {
-            editor.putInt("vibration_intensity", 2);     // Intensité de vibration : niveau 2
+            editor.putInt("vibration_intensity", 2);        // Intensité de vibration : niveau 2
         }
         if (!prefs.contains("currency")) {
-            editor.putString("currency", "EUR");          // Devise : Euros
+            editor.putString("currency", "EUR");            // Devise : Euros
         }
         if (!prefs.contains("language")) {
-            editor.putString("language", "fr");           // Langue : Français
+            editor.putString("language", "fr");             // Langue : Français
         }
         if (!prefs.contains("tolerance_percentage")) {
             editor.putFloat("tolerance_percentage", (float) 0.01);
@@ -122,15 +119,16 @@ public class MainActivity extends AppCompatActivity {
                 .addConverterFactory(GsonConverterFactory.create()) // Utilise Gson pour parser le JSON
                 .build();
 
-
         // Crée une instance de l'interface BinanceApi
         binanceApi = retrofit.create(BinanceApi.class);
 
-        // Initialise le Handler pour exécuter des tâches sur le thread principal
-        handler = new Handler(Looper.getMainLooper());
 
-        ////////////////////////////////a supprr
-        // Définit une tâche répétitive pour récupérer le prix
+        // Initialise le Handler pour exécuter des tâches sur le thread principal
+        loadSettings();
+        handler = new Handler(Looper.getMainLooper());
+        // Assurez-vous qu'aucun Runnable n'est en cours d'exécution avant de démarrer un nouveau
+        stopPriceUpdates();
+        // Définir une tâche répétitive pour récupérer le prix
         priceRunnable = new Runnable() {
             @Override
             public void run() {
@@ -138,13 +136,13 @@ public class MainActivity extends AppCompatActivity {
                 handler.postDelayed(this, minInterval * 1000); // Relance la tâche toutes les 5 secondes
             }
         };
-/////////////////////////////////////////
-
-        // Lance la tâche de mise à jour du prix
         handler.post(priceRunnable);
     }
 
-    // Méthode pour récupérer le prix du Bitcoin via l'API
+
+
+
+    // Méthode pour récupérer le prix du Bitcoin depuis l'API de Binance et afficher la variation
     private void fetchBitcoinPrice() {
         // Crée une requête pour obtenir le prix
         Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice();
@@ -192,14 +190,6 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // Méthode appelée lors de la destruction de l'activité
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        // Arrête la tâche répétitive pour éviter les fuites de mémoire
-        handler.removeCallbacks(priceRunnable);
-    }
-
     // Méthode pour gérer les résultats des demandes de permissions
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -215,27 +205,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    // Méthode appelée lorsque l'activité reprend
     @Override
     protected void onResume() {
         super.onResume();
-        // Arrêter l'ancien runnable s'il existe
-        stopPriceUpdates();
-        // Relire les paramètres depuis les préférences
-        loadSettings();
-        // Redémarrer le runnable avec le nouveau refresh_interval
-        startPriceUpdates();
-    }
+            // Arrêter l'ancien runnable s'il existe
+            stopPriceUpdates();
+            // Relire les paramètres depuis les préférences
+            loadSettings();
+            // Redémarrer le runnable avec le nouveau refresh_interval
+            startPriceUpdates();    }
 
     // Méthode pour démarrer les mises à jour du prix
     private void startPriceUpdates() {
-        // Définir une tâche répétitive pour récupérer le prix
-        priceRunnable = new Runnable() {
-            @Override
-            public void run() {
-                fetchBitcoinPrice(); // Récupère le prix
-                handler.postDelayed(this, minInterval * 1000); // Relance la tâche toutes les 5 secondes
-            }
-        };
+        //mettre à jour minInterval avec la nouvelle valeur depuis les préférences
+        minInterval = prefs.getInt("refresh_interval", 5);
+
         // Lance la tâche de mise à jour du prix
         handler.post(priceRunnable);
     }
@@ -247,7 +232,16 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // Méthode pour lire les paramètres depuis les préférences
     private void loadSettings() {
         minInterval = prefs.getInt("refresh_interval", 5); // Relit la valeur
+    }
+
+    // Méthode appelée lors de la destruction de l'activité
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Arrête la tâche répétitive pour éviter les fuites de mémoire
+        stopPriceUpdates();
     }
 }
