@@ -10,6 +10,7 @@ import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.activity.OnBackPressedDispatcher;
 import android.util.Log;
 
 public class SettingsActivity extends AppCompatActivity {
@@ -25,14 +26,16 @@ public class SettingsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
 
-        // Associer le bouton au code
-        Button settingsButton = findViewById(R.id.mainActivityButton);
 
-        // Ajouter le listener pour ouvrir SettingsActivity
-        settingsButton.setOnClickListener(v -> {
-            Intent intent = new Intent(SettingsActivity.this, MainActivity.class);
-            startActivity(intent);
+        // Get the reference to the button in the layout
+        Button backButton = findViewById(R.id.mainActivityButton);
+
+        // Set the click listener
+        backButton.setOnClickListener(v -> {
+            OnBackPressedDispatcher dispatcher = getOnBackPressedDispatcher();
+            dispatcher.onBackPressed();
         });
+
 
         // Initialize SharedPreferences
         prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE); // charger la base de données des preferences (parametres) sauvegardées

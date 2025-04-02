@@ -138,11 +138,10 @@ public class MainActivity extends AppCompatActivity {
         // Check if the Runnable has already been initialized
         if (this.asBeenInitialized == false) {
             this.asBeenInitialized = true; // Set the flag to true to indicate it has been initialized
-            Log.d(TAG, "FIRST TIME AND LAST"); //todo : i saw it more than once
+            Log.d(TAG, "FIRST TIME AND LAST");
             runnable = new Runnable() {
                 @Override
                 public void run() {
-                    minInterval = prefs.getInt("refresh_interval", 5);
                     fetchBitcoinPrice(); // Fetch the price
                     handler.postDelayed(this, minInterval * 1000L); // Schedule the next fetch
                 }
@@ -150,6 +149,19 @@ public class MainActivity extends AppCompatActivity {
             handler.post(runnable);
         }
     }
+
+
+    // onResume is called when the activity becomes visible to the user
+    @Override
+    protected void onResume() {
+        super.onResume();
+        handler.removeCallbacks(runnable); // Stop the loop when the activity is paused
+
+        minInterval = prefs.getInt("refresh_interval", 5); // Get the new interval from preferences
+
+        handler.post(runnable); // Restart the loop with the new interval
+    }
+
 
     @Override
     protected void onDestroy() {
