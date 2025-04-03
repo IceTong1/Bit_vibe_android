@@ -1,14 +1,9 @@
 package com.example.bitvibe;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import android.Manifest;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.util.Log;
@@ -18,10 +13,7 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 import android.content.SharedPreferences;
-
 import android.os.Handler;
-import android.os.Looper;
-
 
 // Activité principale de l'application BitVibe
 public class MainActivity extends AppCompatActivity {
@@ -34,10 +26,8 @@ public class MainActivity extends AppCompatActivity {
     private BinanceApi binanceApi;
     // TextView pour afficher le prix du Bitcoin
     private TextView bitcoinPriceTextView;
-    // EditText pour entrer la tolassociatedérance de variation
-    private EditText toleranceEditText;
     // Handler pour exécuter des tâches sur le thread principal
-    private Handler handler = new Handler();
+    private final Handler handler = new Handler();
     // Runnable pour récupérer le prix périodiquement
     private Runnable runnable;
     // Dernier prix connu du Bitcoin (-1 au départ)
@@ -46,7 +36,6 @@ public class MainActivity extends AppCompatActivity {
     private int minInterval;
     // Variable pour vérifier si le Runnable a été initialisé
     private boolean asBeenInitialized = false;
-
 
     // Méthode appelée lors de la création de l'activité
     @Override
@@ -63,7 +52,6 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);
         });
-
 
         // Créer ou charger les préférences partagées
         prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE); // Sauvegarder dans un fichier nommé "BitVibePrefs"
@@ -107,17 +95,6 @@ public class MainActivity extends AppCompatActivity {
         bitcoinPriceTextView = findViewById(R.id.bitcoinPriceTextView);
 
 
-        /// ///////////////////////////BLUETOOTH////////////////////////////////////////////////////
-        // Vérifie si les permissions Bluetooth sont accordées, sinon les demande
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN},
-                    REQUEST_BLUETOOTH_PERMISSIONS);
-        }
-        ////////////////////////////////////////////////////////////////////////////////////////////
-
-
         // Configure Retrofit pour communiquer avec l'API de Binance
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("https://api.binance.com/") // URL de base de l'API
@@ -128,11 +105,8 @@ public class MainActivity extends AppCompatActivity {
         binanceApi = retrofit.create(BinanceApi.class);
 
 
-        //////////////////////////////// A AMELIORER ///////////////////////////////////////////
-        ////////////////////////////////////////////////////////////////////////////////////////
-        initializeLoop();
+        initializeLoop(); // Lance la boucle de récupération du prix
     }
-
 
     private void initializeLoop() {
         // Check if the Runnable has already been initialized
@@ -150,7 +124,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
     // onResume is called when the activity becomes visible to the user
     @Override
     protected void onResume() {
@@ -161,7 +134,6 @@ public class MainActivity extends AppCompatActivity {
 
         handler.post(runnable); // Restart the loop with the new interval
     }
-
 
     @Override
     protected void onDestroy() {
@@ -180,8 +152,8 @@ public class MainActivity extends AppCompatActivity {
                 // Vérifie si la réponse est valide
                 if (response.isSuccessful() && response.body() != null) {
                     double currentPrice = response.body().getPrice(); // Récupère le prix actuel
-                    Log.d(TAG, "Prix du Bitcoin : " + currentPrice + "lastPrice : " + lastPrice);
-                    bitcoinPriceTextView.setText("Prix du Bitcoin : $" + currentPrice); // Met à jour l'affichage
+                    Log.d(TAG, "Prix du Bitcoin (" + response.body().getSymbol() + ") : currentPrice = " + currentPrice + ", lastPrice = " + lastPrice);
+                    bitcoinPriceTextView.setText(response.body().getSymbol()+" : $" + currentPrice); // Met à jour l'affichage
 
                     // Si un dernier prix existe, calcule la variation
                     float tolerancePercentage = prefs.getFloat("tolerance_percentage", -1); // Récupère la tolérance
@@ -215,19 +187,5 @@ public class MainActivity extends AppCompatActivity {
                 bitcoinPriceTextView.setText("Échec de la connexion");
             }
         });
-    }
-
-    // Méthode pour gérer les résultats des demandes de permissions
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_BLUETOOTH_PERMISSIONS) { // Vérifie si c'est une réponse pour Bluetooth
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) { // Permissions accordées
-                Log.d(TAG, "Permissions Bluetooth accordées");
-            } else { // Permissions refusées
-                Log.e(TAG, "Permissions Bluetooth refusées");
-                bitcoinPriceTextView.setText("Bluetooth requis");
-            }
-        }
     }
 }

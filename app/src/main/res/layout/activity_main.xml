@@ -10,7 +10,7 @@
         android:id="@+id/bitcoinPriceTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Prix du Bitcoin : Chargement..."
+        android:text="Chargement..."
         android:textSize="24sp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -26,5 +26,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         android:layout_marginBottom="32dp"/>
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>
