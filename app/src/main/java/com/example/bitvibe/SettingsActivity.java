@@ -29,9 +29,9 @@ public class SettingsActivity extends AppCompatActivity {
 
         // Get the reference to the button in the layout
         Button backButton = findViewById(R.id.mainActivityButton);
-
         // Set the click listener
         backButton.setOnClickListener(v -> {
+            saveSettings();
             OnBackPressedDispatcher dispatcher = getOnBackPressedDispatcher();
             dispatcher.onBackPressed();
         });
@@ -101,14 +101,7 @@ public class SettingsActivity extends AppCompatActivity {
                 + ", Language: " + currentLanguage
                 + ", Tolerance Percentage: " + currentTolerance);
 
-        // Save button listener
-        Button saveButton = findViewById(R.id.save_button);
-        saveButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                saveSettings();
-            }
-        });
+
     }
 
     private void saveSettings() {
