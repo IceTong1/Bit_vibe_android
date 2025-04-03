@@ -22,10 +22,12 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 
+// Import de la nouvelle activité
+import com.example.bitvibe.bracelet.BraceletConnectActivity;
 
 // Activité principale de l'application BitVibe
 public class MainActivity extends AppCompatActivity {
-    private SharedPreferences prefs;  //pour les settings
+    private SharedPreferences prefs;   //pour les settings
     // Constante pour les logs
     private static final String TAG = "MainActivity";
     // Code de demande pour les permissions Bluetooth
@@ -34,10 +36,10 @@ public class MainActivity extends AppCompatActivity {
     private BinanceApi binanceApi;
     // TextView pour afficher le prix du Bitcoin
     private TextView bitcoinPriceTextView;
-    // EditText pour entrer la tolassociatedérance de variation
+    // EditText pour entrer la tolérance de variation (Note : nom de variable "tolassociatedérance" semble incorrect)
     private EditText toleranceEditText;
     // Handler pour exécuter des tâches sur le thread principal
-    private Handler handler = new Handler();
+    private Handler handler = new Handler(Looper.getMainLooper()); // Préciser Looper.getMainLooper() est une bonne pratique
     // Runnable pour récupérer le prix périodiquement
     private Runnable runnable;
     // Dernier prix connu du Bitcoin (-1 au départ)
@@ -55,14 +57,24 @@ public class MainActivity extends AppCompatActivity {
         // Charge le layout de l'activité depuis activity_main.xml
         setContentView(R.layout.activity_main);
 
+        // --- Bouton Paramètres ---
         // Associer le bouton au code
         Button settingsButton = findViewById(R.id.settingsButton);
-
         // Ajouter le listener pour ouvrir SettingsActivity
         settingsButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);
         });
+
+        // --- NOUVEAU : Bouton Connexion Bracelets ---
+        // Associer le nouveau bouton (suppose que son ID dans activity_main.xml est "braceletConnectButton")
+        Button braceletConnectButton = findViewById(R.id.braceletConnectButton); // Assurez-vous que cet ID existe dans votre XML
+        // Ajouter le listener pour ouvrir BraceletConnectActivity
+        braceletConnectButton.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, BraceletConnectActivity.class);
+            startActivity(intent);
+        });
+        // --- Fin NOUVEAU ---
 
 
         // Créer ou charger les préférences partagées
@@ -70,31 +82,31 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences.Editor editor = prefs.edit();
         // Définir les valeurs par défaut seulement si elles n'existent pas
         if (!prefs.contains("refresh_interval")) {
-            editor.putInt("refresh_interval", 5);           // Intervalle minimum de vibration : 5000ms
+            editor.putInt("refresh_interval", 5);          // Intervalle minimum de vibration : 5s
         }
         if (!prefs.contains("vibration_intensity")) {
-            editor.putInt("vibration_intensity", 2);        // Intensité de vibration : niveau 2
+            editor.putInt("vibration_intensity", 2);       // Intensité de vibration : niveau 2
         }
         if (!prefs.contains("currency")) {
-            editor.putString("currency", "EUR");            // Devise : Euros
+            editor.putString("currency", "EUR");           // Devise : Euros
         }
         if (!prefs.contains("language")) {
-            editor.putString("language", "fr");             // Langue : Français
+            editor.putString("language", "fr");            // Langue : Français
         }
         if (!prefs.contains("tolerance_percentage")) {
-            editor.putFloat("tolerance_percentage", (float) 0.01);
+            editor.putFloat("tolerance_percentage", (float) 0.01); // Tolérance 0.01% ? Ou 1% ? (0.01 = 1%)
         }
         editor.apply(); // Sauvegarde les modifications
 
 
         /////////////////////////// Lire les valeurs des paramètres pour debug //////////////////////////////////
-        minInterval = prefs.getInt("refresh_interval", -1);    // -1 si pas de valeur sauvegardée
+        minInterval = prefs.getInt("refresh_interval", 5);   // Valeur par défaut 5 si pas trouvée
         int intensity = prefs.getInt("vibration_intensity", -1);
-        String currency = prefs.getString("currency", "null");   //null si pas de valeur sauvegardée
-        String language = prefs.getString("language", "null");
-        float tolerancePercentage = prefs.getFloat("tolerance_percentage", -1);
+        String currency = prefs.getString("currency", "EUR"); // Valeur par défaut EUR si pas trouvée
+        String language = prefs.getString("language", "fr");  // Valeur par défaut fr si pas trouvée
+        float tolerancePercentage = prefs.getFloat("tolerance_percentage", 0.01f); // Valeur par défaut 0.01f si pas trouvée
 
-        Log.d("MainActivity", "VALEURS SAUVEGARDEES : refresh_interval="
+        Log.d(TAG, "VALEURS CHARGEES : refresh_interval="
                 + minInterval
                 + ", vibration_intensity=" + intensity
                 + ", currency=" + currency
@@ -105,14 +117,23 @@ public class MainActivity extends AppCompatActivity {
 
         // Associe les vues aux éléments du layout
         bitcoinPriceTextView = findViewById(R.id.bitcoinPriceTextView);
+        // Note: toleranceEditText n'est pas initialisé ici via findViewById. S'il existe dans le layout, il faudrait l'ajouter.
+        // toleranceEditText = findViewById(R.id.toleranceEditText); // Exemple si l'ID existe
 
 
         /// ///////////////////////////BLUETOOTH////////////////////////////////////////////////////
         // Vérifie si les permissions Bluetooth sont accordées, sinon les demande
+        // AJOUT: Vérifier aussi les permissions de localisation si nécessaire pour le scan pré-Android 12
+        // (Bien que la demande soit faite ici, la logique de scan dans BraceletConnectActivity devra aussi gérer ces permissions)
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+                ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) { // Ajout vérification localisation
             ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN},
+                    new String[]{
+                            Manifest.permission.BLUETOOTH_CONNECT,
+                            Manifest.permission.BLUETOOTH_SCAN,
+                            Manifest.permission.ACCESS_FINE_LOCATION // Ajout demande localisation
+                    },
                     REQUEST_BLUETOOTH_PERMISSIONS);
         }
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -129,44 +150,73 @@ public class MainActivity extends AppCompatActivity {
 
 
         //////////////////////////////// A AMELIORER ///////////////////////////////////////////
+        // L'initialisation de la boucle ici pourrait être problématique si les permissions ne sont pas encore accordées.
+        // Idéalement, démarrer la boucle seulement après confirmation des permissions nécessaires.
         ////////////////////////////////////////////////////////////////////////////////////////
-        initializeLoop();
+        initializeLoop(); // Initialise la boucle de récupération du prix
     }
 
 
     private void initializeLoop() {
-        // Check if the Runnable has already been initialized
-        if (this.asBeenInitialized == false) {
-            this.asBeenInitialized = true; // Set the flag to true to indicate it has been initialized
-            Log.d(TAG, "FIRST TIME AND LAST");
+        // Vérifie si le Runnable a déjà été initialisé
+        if (!this.asBeenInitialized) { // Simplification de la condition
+            this.asBeenInitialized = true; // Marque comme initialisé
+            Log.d(TAG, "Initialisation de la boucle de récupération du prix");
             runnable = new Runnable() {
                 @Override
                 public void run() {
-                    fetchBitcoinPrice(); // Fetch the price
-                    handler.postDelayed(this, minInterval * 1000L); // Schedule the next fetch
+                    fetchBitcoinPrice(); // Récupère le prix
+                    // Reprogramme l'exécution après l'intervalle défini (converti en millisecondes)
+                    handler.postDelayed(this, minInterval * 1000L);
                 }
             };
-            handler.post(runnable);
+            handler.post(runnable); // Lance la première exécution immédiatement
         }
     }
 
 
-    // onResume is called when the activity becomes visible to the user
+    // onResume est appelée lorsque l'activité redevient visible
     @Override
     protected void onResume() {
         super.onResume();
-        handler.removeCallbacks(runnable); // Stop the loop when the activity is paused
+        // Assurez-vous que le runnable existe avant de tenter de le supprimer/reposter
+        if (runnable != null) {
+             handler.removeCallbacks(runnable); // Arrête les exécutions programmées précédentes
 
-        minInterval = prefs.getInt("refresh_interval", 5); // Get the new interval from preferences
+             // Recharge l'intervalle depuis les préférences (au cas où il aurait changé dans SettingsActivity)
+             minInterval = prefs.getInt("refresh_interval", 5);
+             Log.d(TAG, "onResume: Reprise de la boucle avec intervalle = " + minInterval + "s");
 
-        handler.post(runnable); // Restart the loop with the new interval
+             handler.post(runnable); // Redémarre la boucle immédiatement
+        } else if (!asBeenInitialized) {
+             // Si le runnable n'a jamais été initialisé (par exemple si onCreate n'a pas pu le faire
+             // à cause des permissions manquantes initialement), on pourrait tenter de l'initialiser ici
+             // après avoir vérifié à nouveau les permissions. Pour l'instant, on log seulement.
+             Log.w(TAG, "onResume: Runnable non initialisé.");
+        }
+
+    }
+
+    // onPause est appelée lorsque l'activité n'est plus au premier plan
+    @Override
+    protected void onPause() {
+        super.onPause();
+         // Arrête la boucle lorsque l'activité est mise en pause pour économiser les ressources
+        if (handler != null && runnable != null) {
+            handler.removeCallbacks(runnable);
+             Log.d(TAG, "onPause: Boucle de récupération du prix mise en pause.");
+        }
     }
 
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        handler.removeCallbacks(runnable);
+        // S'assure d'arrêter la boucle lorsque l'activité est détruite
+        if (handler != null && runnable != null) {
+            handler.removeCallbacks(runnable);
+             Log.d(TAG, "onDestroy: Boucle de récupération du prix arrêtée.");
+        }
     }
 
     // Méthode pour récupérer le prix du Bitcoin depuis l'API de Binance et afficher la variation
@@ -180,38 +230,47 @@ public class MainActivity extends AppCompatActivity {
                 // Vérifie si la réponse est valide
                 if (response.isSuccessful() && response.body() != null) {
                     double currentPrice = response.body().getPrice(); // Récupère le prix actuel
-                    Log.d(TAG, "Prix du Bitcoin : " + currentPrice + "lastPrice : " + lastPrice);
-                    bitcoinPriceTextView.setText("Prix du Bitcoin : $" + currentPrice); // Met à jour l'affichage
+                    Log.d(TAG, "Prix actuel BTC: " + currentPrice + ", Dernier prix enregistré: " + lastPrice);
+
+                    // Met à jour l'affichage du prix (formaté à 2 décimales)
+                    // TODO: Utiliser la devise des préférences ("currency") au lieu de '$' codé en dur
+                    bitcoinPriceTextView.setText(String.format("Prix du Bitcoin : $%.2f", currentPrice));
 
                     // Si un dernier prix existe, calcule la variation
-                    float tolerancePercentage = prefs.getFloat("tolerance_percentage", -1); // Récupère la tolérance
+                    float tolerancePercentage = prefs.getFloat("tolerance_percentage", 0.01f); // Récupère la tolérance
                     if (lastPrice != -1) {
-                        double percentageChange = ((currentPrice - lastPrice) / lastPrice) * 100; // Variation en %
-                        if (percentageChange > tolerancePercentage) { // Si hausse significative
-                            lastPrice = currentPrice; // Met à jour le dernier prix
-                            Log.d(TAG, "Hausse détectée (+" + String.format("%.2f", percentageChange) + "%)");
-                            Toast.makeText(MainActivity.this, "Hausse détectée (+" + String.format("%.2f", percentageChange) + "%)", Toast.LENGTH_SHORT).show();
-                        } else if (percentageChange < -tolerancePercentage) { // Si baisse significative
-                            lastPrice = currentPrice; // Met à jour le dernier prix
-                            Log.d(TAG, "Baisse détectée (" + String.format("%.2f", percentageChange) + "%)");
-                            Toast.makeText(MainActivity.this, "Baisse détectée (" + String.format("%.2f", percentageChange) + "%)", Toast.LENGTH_SHORT).show();
-                        } else { // Si stable
-                            Log.d(TAG, "Prix stable (" + String.format("%.2f", percentageChange) + "%)");
+                        // Calcule la variation en pourcentage
+                        double percentageChange = ((currentPrice - lastPrice) / lastPrice); // Pas besoin de *100 pour comparer à la tolérance stockée comme 0.01
+
+                        // Vérifie si la variation dépasse la tolérance (en valeur absolue)
+                        if (Math.abs(percentageChange) > tolerancePercentage) {
+                             // TODO: Déclencher la vibration ici (logique à implémenter, potentiellement via un service ou une autre classe)
+                             if (percentageChange > 0) {
+                                 Log.i(TAG, "Hausse détectée ! Variation: " + String.format("%.4f%%", percentageChange * 100));
+                                 Toast.makeText(MainActivity.this, "Hausse détectée (" + String.format("%.2f%%", percentageChange * 100) + ")", Toast.LENGTH_SHORT).show();
+                             } else {
+                                 Log.i(TAG, "Baisse détectée ! Variation: " + String.format("%.4f%%", percentageChange * 100));
+                                 Toast.makeText(MainActivity.this, "Baisse détectée (" + String.format("%.2f%%", percentageChange * 100) + ")", Toast.LENGTH_SHORT).show();
+                             }
+                             // Met à jour le dernier prix SEULEMENT si une variation significative a eu lieu
+                             lastPrice = currentPrice;
+                        } else {
+                            Log.d(TAG, "Prix stable. Variation: " + String.format("%.4f%%", percentageChange * 100));
                         }
                     } else {
-                        lastPrice = currentPrice; // Met à jour le dernier prix si c'est le premier prix récupéré
+                         // Si c'est la première récupération, on initialise lastPrice
+                         Log.d(TAG, "Initialisation du premier prix: " + currentPrice);
+                         lastPrice = currentPrice;
                     }
-                    // Le dernier prix n'est pas mis tant qu'il n'y a pas eu de variation significative
-
-                } else { // En cas d'erreur dans la réponse
-                    Log.e(TAG, "Erreur API : " + response.code());
+                } else { // En cas d'erreur dans la réponse de l'API
+                    Log.e(TAG, "Erreur de réponse API : Code " + response.code());
                     bitcoinPriceTextView.setText("Erreur API : " + response.code());
                 }
             }
 
             @Override
-            public void onFailure(Call<BinancePriceResponse> call, Throwable t) { // En cas d'échec réseau
-                Log.e(TAG, "Échec de la requête : " + t.getMessage());
+            public void onFailure(Call<BinancePriceResponse> call, Throwable t) { // En cas d'échec réseau ou autre problème
+                Log.e(TAG, "Échec de la requête API : " + t.getMessage(), t); // Logger l'exception complète est utile
                 bitcoinPriceTextView.setText("Échec de la connexion");
             }
         });
@@ -221,12 +280,31 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_BLUETOOTH_PERMISSIONS) { // Vérifie si c'est une réponse pour Bluetooth
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) { // Permissions accordées
-                Log.d(TAG, "Permissions Bluetooth accordées");
-            } else { // Permissions refusées
-                Log.e(TAG, "Permissions Bluetooth refusées");
-                bitcoinPriceTextView.setText("Bluetooth requis");
+        if (requestCode == REQUEST_BLUETOOTH_PERMISSIONS) { // Vérifie si c'est une réponse pour nos permissions
+            boolean allGranted = true;
+            for (int grantResult : grantResults) {
+                if (grantResult != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    break;
+                }
+            }
+
+            if (allGranted) { // Toutes les permissions (Bluetooth Connect, Scan, Fine Location) ont été accordées
+                Log.i(TAG, "Toutes les permissions nécessaires (Bluetooth/Localisation) ont été accordées.");
+                // On pourrait relancer l'initialisation de la boucle ici si elle n'a pas pu se faire dans onCreate
+                if (!asBeenInitialized) {
+                    initializeLoop();
+                }
+            } else { // Au moins une permission a été refusée
+                Log.e(TAG, "Au moins une permission Bluetooth ou Localisation a été refusée.");
+                // Afficher un message plus clair à l'utilisateur
+                Toast.makeText(this, "Les permissions Bluetooth et Localisation sont nécessaires pour la connexion aux bracelets.", Toast.LENGTH_LONG).show();
+                bitcoinPriceTextView.setText("Permissions requises"); // Mettre à jour l'UI pour indiquer le problème
+                // On pourrait désactiver le bouton de connexion aux bracelets ici
+                 Button braceletConnectButton = findViewById(R.id.braceletConnectButton);
+                 if (braceletConnectButton != null) {
+                     braceletConnectButton.setEnabled(false);
+                 }
             }
         }
     }
