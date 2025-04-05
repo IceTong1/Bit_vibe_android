@@ -33,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
     // Code de demande pour les permissions Bluetooth
     private static final int REQUEST_BLUETOOTH_PERMISSIONS = 1;
     // Interface pour appeler l'API de Binance
-    private BinanceApi binanceApi;
+    public static BinanceApi binanceApi;
     // TextView pour afficher le prix du Bitcoin
     private TextView bitcoinPriceTextView;
     // EditText pour entrer la tolérance de variation (Note : nom de variable "tolassociatedérance" semble incorrect)
@@ -75,6 +75,16 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
         // --- Fin NOUVEAU ---
+
+        // --- Bouton Alarm ---
+        // Associer le bouton au code
+        Button alarmButton = findViewById(R.id.alarmButton);
+        // Ajouter le listener pour ouvrir SettingsActivity
+        alarmButton.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, AlarmActivity.class);
+            startActivity(intent);
+        });
+
 
 
         // Créer ou charger les préférences partagées
@@ -174,7 +184,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
     // onResume est appelée lorsque l'activité redevient visible
     @Override
     protected void onResume() {
@@ -198,6 +207,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // onPause est appelée lorsque l'activité n'est plus au premier plan
+    //TODO verifier si marche toujour en arriere plan sinon ne jamais arrêter la boucle et suppr onPause
     @Override
     protected void onPause() {
         super.onPause();
@@ -207,7 +217,6 @@ public class MainActivity extends AppCompatActivity {
              Log.d(TAG, "onPause: Boucle de récupération du prix mise en pause.");
         }
     }
-
 
     @Override
     protected void onDestroy() {
@@ -230,11 +239,11 @@ public class MainActivity extends AppCompatActivity {
                 // Vérifie si la réponse est valide
                 if (response.isSuccessful() && response.body() != null) {
                     double currentPrice = response.body().getPrice(); // Récupère le prix actuel
-                    Log.d(TAG, "Prix actuel BTC: " + currentPrice + ", Dernier prix enregistré: " + lastPrice);
+                    Log.d(TAG, response.body().getSymbol()+" : $" + currentPrice + ", Dernier prix enregistré: " + lastPrice);
 
                     // Met à jour l'affichage du prix (formaté à 2 décimales)
                     // TODO: Utiliser la devise des préférences ("currency") au lieu de '$' codé en dur
-                    bitcoinPriceTextView.setText(String.format("Prix du Bitcoin : $%.2f", currentPrice));
+                    bitcoinPriceTextView.setText(String.format(response.body().getSymbol()+" : $" + currentPrice));
 
                     // Si un dernier prix existe, calcule la variation
                     float tolerancePercentage = prefs.getFloat("tolerance_percentage", 0.01f); // Récupère la tolérance

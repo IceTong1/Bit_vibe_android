@@ -44,6 +44,12 @@
             android:name=".bracelet.BraceletConnectActivity"
             android:exported="false"
             android:label="@string/title_activity_bracelet_connect"/>
+
+        <!--    Alarm    -->
+        <activity
+            android:name=".AlarmActivity"
+            android:exported="false" />
+
             </application>
 
 </manifest>
