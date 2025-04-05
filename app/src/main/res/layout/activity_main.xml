@@ -21,13 +21,13 @@
         android:id="@+id/settingsButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="104dp"
         android:text="Settings"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginBottom="32dp"/>
+        app:layout_constraintStart_toStartOf="parent" />
 
-        <Button
+    <Button
     android:id="@+id/braceletConnectButton"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"

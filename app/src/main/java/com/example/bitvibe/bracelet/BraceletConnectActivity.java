@@ -1,6 +1,8 @@
 package com.example.bitvibe.bracelet;
 
 import com.example.bitvibe.R;
+
+import androidx.activity.OnBackPressedDispatcher;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -125,6 +127,12 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
             } else {
                 startScan();
             }
+        });
+        Button backButton = findViewById(R.id.mainActivityButton);
+        // Set the click listener
+        backButton.setOnClickListener(v -> {
+            OnBackPressedDispatcher dispatcher = getOnBackPressedDispatcher();
+            dispatcher.onBackPressed();
         });
 
         btnConnectLeft.setOnClickListener(v -> handleConnectButton(LEFT_BRACELET_MAC, true));

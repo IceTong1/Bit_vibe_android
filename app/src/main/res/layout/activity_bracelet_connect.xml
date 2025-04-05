@@ -10,30 +10,31 @@
         android:id="@+id/btnScan"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginStart="154dp"
+        android:layout_marginTop="117dp"
+        android:layout_marginEnd="154dp"
         android:text="Scanner"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@+id/layoutTestRight" />
 
     <View
         android:id="@+id/dividerTop"
         android:layout_width="0dp"
         android:layout_height="1dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="64dp"
         android:background="?android:attr/listDivider"
-        app:layout_constraintTop_toBottomOf="@id/btnScan"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
 
     <TextView
         android:id="@+id/tvLabelLeft"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
         android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
         android:text="Bracelet Gauche"
         android:textAppearance="@style/TextAppearance.AppCompat.Medium"
         android:textStyle="bold"
@@ -72,12 +73,12 @@
         android:id="@+id/layoutTestLeft"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
         android:layout_marginTop="8dp"
-        app:layout_constraintTop_toBottomOf="@id/btnConnectLeft"
-        app:layout_constraintStart_toStartOf="parent"
+        android:gravity="center_horizontal"
+        android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
-        android:gravity="center_horizontal" >
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/btnConnectLeft">
 
         <Button
             android:id="@+id/btnBeepLeft"
@@ -85,40 +86,45 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:textSize="10sp"
-            android:text="Beep G" />
+            android:text="Beep G"
+            android:textSize="10sp" />
+
         <Button
             android:id="@+id/btnLedLeft"
             style="?android:attr/buttonBarButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:textSize="10sp"
-            android:text="LED G" />
+            android:text="LED G"
+            android:textSize="10sp" />
+
         <Button
             android:id="@+id/btnVibrateLeft"
             style="?android:attr/buttonBarButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:textSize="10sp"
-            android:text="Vib G" />
+            android:text="Vib G"
+            android:textSize="10sp" />
+
         <Button
             android:id="@+id/btnLedVibrateLeft"
             style="?android:attr/buttonBarButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:textSize="10sp"
-            android:text="LED+Vib G" />
+            android:text="LED+Vib G"
+            android:textSize="10sp" />
+
         <Button
             android:id="@+id/btnStopLeft"
             style="?android:attr/buttonBarButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:textSize="10sp"
-            android:text="Stop G" />
+            android:text="Stop G"
+            android:textSize="10sp" />
+
     </LinearLayout>
 
 
@@ -128,18 +134,17 @@
         android:layout_height="1dp"
         android:layout_marginTop="16dp"
         android:background="?android:attr/listDivider"
-        app:layout_constraintTop_toBottomOf="@id/layoutTestLeft"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/layoutTestLeft" />
 
 
     <TextView
         android:id="@+id/tvLabelRight"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
         android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
         android:text="Bracelet Droit"
         android:textAppearance="@style/TextAppearance.AppCompat.Medium"
         android:textStyle="bold"
@@ -178,12 +183,12 @@
         android:id="@+id/layoutTestRight"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
         android:layout_marginTop="8dp"
-        app:layout_constraintTop_toBottomOf="@id/btnConnectRight"
-        app:layout_constraintStart_toStartOf="parent"
+        android:gravity="center_horizontal"
+        android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
-        android:gravity="center_horizontal" >
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/btnConnectRight">
 
         <Button
             android:id="@+id/btnBeepRight"
@@ -191,41 +196,55 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:textSize="10sp"
-            android:text="Beep D" />
+            android:text="Beep D"
+            android:textSize="10sp" />
+
         <Button
             android:id="@+id/btnLedRight"
             style="?android:attr/buttonBarButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:textSize="10sp"
-            android:text="LED D" />
+            android:text="LED D"
+            android:textSize="10sp" />
+
         <Button
             android:id="@+id/btnVibrateRight"
             style="?android:attr/buttonBarButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:textSize="10sp"
-            android:text="Vib D" />
+            android:text="Vib D"
+            android:textSize="10sp" />
+
         <Button
             android:id="@+id/btnLedVibrateRight"
             style="?android:attr/buttonBarButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:textSize="10sp"
-            android:text="LED+Vib D" />
+            android:text="LED+Vib D"
+            android:textSize="10sp" />
+
         <Button
             android:id="@+id/btnStopRight"
             style="?android:attr/buttonBarButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:textSize="10sp"
-            android:text="Stop D" />
+            android:text="Stop D"
+            android:textSize="10sp" />
     </LinearLayout>
+
+    <Button
+        android:id="@+id/mainActivityButton"
+        android:layout_width="125dp"
+        android:layout_height="91dp"
+        android:layout_marginStart="143dp"
+        android:layout_marginTop="77dp"
+        android:text="Home"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btnScan" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
