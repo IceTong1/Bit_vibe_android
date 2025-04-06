@@ -184,38 +184,15 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // onResume est appelée lorsque l'activité redevient visible
+    // onResume is called when the activity becomes visible to the user
     @Override
     protected void onResume() {
         super.onResume();
-        // Assurez-vous que le runnable existe avant de tenter de le supprimer/reposter
-        if (runnable != null) {
-             handler.removeCallbacks(runnable); // Arrête les exécutions programmées précédentes
+        handler.removeCallbacks(runnable); // Stop the loop when the activity is paused
 
-             // Recharge l'intervalle depuis les préférences (au cas où il aurait changé dans SettingsActivity)
-             minInterval = prefs.getInt("refresh_interval", 5);
-             Log.d(TAG, "onResume: Reprise de la boucle avec intervalle = " + minInterval + "s");
+        minInterval = prefs.getInt("refresh_interval", 5); // Get the new interval from preferences
 
-             handler.post(runnable); // Redémarre la boucle immédiatement
-        } else if (!asBeenInitialized) {
-             // Si le runnable n'a jamais été initialisé (par exemple si onCreate n'a pas pu le faire
-             // à cause des permissions manquantes initialement), on pourrait tenter de l'initialiser ici
-             // après avoir vérifié à nouveau les permissions. Pour l'instant, on log seulement.
-             Log.w(TAG, "onResume: Runnable non initialisé.");
-        }
-
-    }
-
-    // onPause est appelée lorsque l'activité n'est plus au premier plan
-    //TODO verifier si marche toujour en arriere plan sinon ne jamais arrêter la boucle et suppr onPause
-    @Override
-    protected void onPause() {
-        super.onPause();
-         // Arrête la boucle lorsque l'activité est mise en pause pour économiser les ressources
-        if (handler != null && runnable != null) {
-            handler.removeCallbacks(runnable);
-             Log.d(TAG, "onPause: Boucle de récupération du prix mise en pause.");
-        }
+        handler.post(runnable); // Restart the loop with the new interval
     }
 
     @Override
