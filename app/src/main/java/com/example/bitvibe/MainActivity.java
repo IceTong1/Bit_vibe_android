@@ -239,40 +239,31 @@ public class MainActivity extends AppCompatActivity {
                 // Vérifie si la réponse est valide
                 if (response.isSuccessful() && response.body() != null) {
                     double currentPrice = response.body().getPrice(); // Récupère le prix actuel
-                    Log.d(TAG, response.body().getSymbol()+" : $" + currentPrice + ", Dernier prix enregistré: " + lastPrice);
-
-                    // Met à jour l'affichage du prix (formaté à 2 décimales)
-                    // TODO: Utiliser la devise des préférences ("currency") au lieu de '$' codé en dur
-                    bitcoinPriceTextView.setText(String.format(response.body().getSymbol()+" : $" + currentPrice));
+                    Log.d(TAG, "Prix du Bitcoin : " + currentPrice + "lastPrice : " + lastPrice);
+                    bitcoinPriceTextView.setText("Prix du Bitcoin : $" + currentPrice); // Met à jour l'affichage
 
                     // Si un dernier prix existe, calcule la variation
-                    float tolerancePercentage = prefs.getFloat("tolerance_percentage", 0.01f); // Récupère la tolérance
+                    float tolerancePercentage = prefs.getFloat("tolerance_percentage", -1); // Récupère la tolérance
                     if (lastPrice != -1) {
-                        // Calcule la variation en pourcentage
-                        double percentageChange = ((currentPrice - lastPrice) / lastPrice); // Pas besoin de *100 pour comparer à la tolérance stockée comme 0.01
-
-                        // Vérifie si la variation dépasse la tolérance (en valeur absolue)
-                        if (Math.abs(percentageChange) > tolerancePercentage) {
-                             // TODO: Déclencher la vibration ici (logique à implémenter, potentiellement via un service ou une autre classe)
-                             if (percentageChange > 0) {
-                                 Log.i(TAG, "Hausse détectée ! Variation: " + String.format("%.4f%%", percentageChange * 100));
-                                 Toast.makeText(MainActivity.this, "Hausse détectée (" + String.format("%.2f%%", percentageChange * 100) + ")", Toast.LENGTH_SHORT).show();
-                             } else {
-                                 Log.i(TAG, "Baisse détectée ! Variation: " + String.format("%.4f%%", percentageChange * 100));
-                                 Toast.makeText(MainActivity.this, "Baisse détectée (" + String.format("%.2f%%", percentageChange * 100) + ")", Toast.LENGTH_SHORT).show();
-                             }
-                             // Met à jour le dernier prix SEULEMENT si une variation significative a eu lieu
-                             lastPrice = currentPrice;
-                        } else {
-                            Log.d(TAG, "Prix stable. Variation: " + String.format("%.4f%%", percentageChange * 100));
+                        double percentageChange = ((currentPrice - lastPrice) / lastPrice) * 100; // Variation en %
+                        if (percentageChange > tolerancePercentage) { // Si hausse significative
+                            lastPrice = currentPrice; // Met à jour le dernier prix
+                            Log.d(TAG, "Hausse détectée (+" + String.format("%.2f", percentageChange) + "%)");
+                            Toast.makeText(MainActivity.this, "Hausse détectée (+" + String.format("%.2f", percentageChange) + "%)", Toast.LENGTH_SHORT).show();
+                        } else if (percentageChange < -tolerancePercentage) { // Si baisse significative
+                            lastPrice = currentPrice; // Met à jour le dernier prix
+                            Log.d(TAG, "Baisse détectée (" + String.format("%.2f", percentageChange) + "%)");
+                            Toast.makeText(MainActivity.this, "Baisse détectée (" + String.format("%.2f", percentageChange) + "%)", Toast.LENGTH_SHORT).show();
+                        } else { // Si stable
+                            Log.d(TAG, "Prix stable (" + String.format("%.2f", percentageChange) + "%)");
                         }
                     } else {
-                         // Si c'est la première récupération, on initialise lastPrice
-                         Log.d(TAG, "Initialisation du premier prix: " + currentPrice);
-                         lastPrice = currentPrice;
+                        lastPrice = currentPrice; // Met à jour le dernier prix si c'est le premier prix récupéré
                     }
-                } else { // En cas d'erreur dans la réponse de l'API
-                    Log.e(TAG, "Erreur de réponse API : Code " + response.code());
+                    // Le dernier prix n'est pas mis tant qu'il n'y a pas eu de variation significative
+
+                } else { // En cas d'erreur dans la réponse
+                    Log.e(TAG, "Erreur API : " + response.code());
                     bitcoinPriceTextView.setText("Erreur API : " + response.code());
                 }
             }
