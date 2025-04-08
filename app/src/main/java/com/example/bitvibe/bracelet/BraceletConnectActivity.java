@@ -304,7 +304,6 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
         return true;
     }
 
-
     // --- Scan ---
 
     private void startScan() {

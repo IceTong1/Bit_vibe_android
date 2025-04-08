@@ -268,20 +268,6 @@ public class MainActivity extends AppCompatActivity {
 
             if (allGranted) { // Toutes les permissions (Bluetooth Connect, Scan, Fine Location) ont été accordées
                 Log.i(TAG, "Toutes les permissions nécessaires (Bluetooth/Localisation) ont été accordées.");
-                // On pourrait relancer l'initialisation de la boucle ici si elle n'a pas pu se faire dans onCreate
-                if (!asBeenInitialized) {
-                    initializeLoop();
-                }
-            } else { // Au moins une permission a été refusée
-                Log.e(TAG, "Au moins une permission Bluetooth ou Localisation a été refusée.");
-                // Afficher un message plus clair à l'utilisateur
-                Toast.makeText(this, "Les permissions Bluetooth et Localisation sont nécessaires pour la connexion aux bracelets.", Toast.LENGTH_LONG).show();
-                bitcoinPriceTextView.setText("Permissions requises"); // Mettre à jour l'UI pour indiquer le problème
-                // On pourrait désactiver le bouton de connexion aux bracelets ici
-                 Button braceletConnectButton = findViewById(R.id.braceletConnectButton);
-                 if (braceletConnectButton != null) {
-                     braceletConnectButton.setEnabled(false);
-                 }
             }
         }
     }
