@@ -115,13 +115,15 @@ public class MainActivity extends AppCompatActivity {
         String currency = prefs.getString("currency", "EUR"); // Valeur par défaut EUR si pas trouvée
         String language = prefs.getString("language", "fr");  // Valeur par défaut fr si pas trouvée
         float tolerancePercentage = prefs.getFloat("tolerance_percentage", 0.01f); // Valeur par défaut 0.01f si pas trouvée
+        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false); // Valeur par défaut false si pas trouvée
 
         Log.d(TAG, "VALEURS CHARGEES : refresh_interval="
                 + minInterval
                 + ", vibration_intensity=" + intensity
                 + ", currency=" + currency
                 + ", language=" + language
-                + ", tolerance_percentage=" + tolerancePercentage);
+                + ", tolerance_percentage=" + tolerancePercentage
+                + ", is_alarm_on=" + isAlarmOn);
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -216,8 +218,9 @@ public class MainActivity extends AppCompatActivity {
                 // Vérifie si la réponse est valide
                 if (response.isSuccessful() && response.body() != null) {
                     double currentPrice = response.body().getPrice(); // Récupère le prix actuel
-                    Log.d(TAG, "Prix du Bitcoin : " + currentPrice + "lastPrice : " + lastPrice);
-                    bitcoinPriceTextView.setText("Prix du Bitcoin : $" + currentPrice); // Met à jour l'affichage
+                    Log.d(TAG, response.body().getSymbol() + " : currentPrice = " + currentPrice + ", lastPrice = " + lastPrice);
+                    bitcoinPriceTextView.setText(response.body().getSymbol()+" : $" + currentPrice); // Met à jour l'affichage //todo : recup symbole par les pref quand elle existeront
+                    comparePriceWithAlarm(currentPrice);
 
                     // Si un dernier prix existe, calcule la variation
                     float tolerancePercentage = prefs.getFloat("tolerance_percentage", -1); // Récupère la tolérance
@@ -271,4 +274,31 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+
+    // Method to compare the current price with the alarm settings
+    private void comparePriceWithAlarm(double currentPrice) {
+        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false); // Load alarm state
+        if (isAlarmOn && prefs.contains("trigger_price") && prefs.contains("is_above")) { // Only proceed if alarm is ON and settings are present
+                double triggerPrice = Double.parseDouble(prefs.getString("trigger_price", "0.0"));
+                boolean isAbove = prefs.getBoolean("is_above", false);
+
+                Log.d(TAG, "comparing : trigger Price = " + triggerPrice + ", is Above = " + isAbove + " currentPrice : " + currentPrice);
+                if ((!isAbove && currentPrice >= triggerPrice) || (isAbove && currentPrice <= triggerPrice)) {
+                    // Trigger alarm!
+                    Log.d(TAG, "ALARM TRIGGERED!");
+                    triggerAlarm();
+
+                } else {
+                    Log.d(TAG, "Not Triggered !");
+                }
+        }
+    }
+
+    // Method to trigger the alarm (show a Toast) only if alarm is on
+    private void triggerAlarm() {
+        if(prefs.getBoolean("is_alarm_on", false)){
+            Toast.makeText(MainActivity.this, "Alarm triggered!", Toast.LENGTH_LONG).show();
+        }
+    }
 }
+
