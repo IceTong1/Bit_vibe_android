@@ -203,7 +203,7 @@ public class MainActivity extends AppCompatActivity {
             startService(serviceIntent);
             Log.d(TAG, "AAAAAAAAAAAAAAAAAAAAAAAAAAlarmCheckService started from MainActivity");
         }
-        else if (!isAlarmOn && isServiceRunning) { // todo TEST
+        else if (!isAlarmOn && isServiceRunning) {
             Intent serviceIntent = new Intent(this, AlarmCheckService.class);
             stopService(serviceIntent);
             Log.d(TAG, "AAAAAAAAAAAAAAAAAAAAAAAAlarmCheckService stopped from MainActivity");
