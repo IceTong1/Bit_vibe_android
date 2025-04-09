@@ -2,15 +2,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /> <uses-feature
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/>
+
+    <uses-feature
         android:name="android.hardware.bluetooth_le"
         android:required="true" />
 
@@ -24,22 +27,21 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BitVibe"
         tools:targetApi="31">
-
-        <!-- Alarm service -->
+        <service
+            android:name=".BluetoothConnectionService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
         <service
             android:name=".AlarmCheckService"
-            android:foregroundServiceType="dataSync"
-            android:exported="false" />
-
-        <!--    Settings    -->
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
         <activity
             android:name=".SettingsActivity"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/title_activity_settings"
             android:theme="@style/Theme.BitVibe" >
-            </activity>
+        </activity>
 
-        <!--    Main    -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -49,17 +51,15 @@
             </intent-filter>
         </activity>
 
-        <!--    Bracelet    -->
         <activity
             android:name=".bracelet.BraceletConnectActivity"
             android:exported="false"
             android:label="@string/title_activity_bracelet_connect"/>
 
-        <!--    Alarm    -->
         <activity
             android:name=".AlarmActivity"
             android:exported="false" />
 
-            </application>
+    </application>
 
 </manifest>
