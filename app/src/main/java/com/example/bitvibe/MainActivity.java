@@ -48,6 +48,8 @@ public class MainActivity extends AppCompatActivity {
     private int minInterval;
     // Variable pour vérifier si le Runnable a été initialisé
     private boolean asBeenInitialized = false;
+    // Verfier si le servie alarm est lancé
+    private static boolean  isServiceRunning = false;
 
 
     // Méthode appelée lors de la création de l'activité
@@ -190,11 +192,24 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        handler.removeCallbacks(runnable); // Stop the loop when the activity is paused
-
         minInterval = prefs.getInt("refresh_interval", 5); // Get the new interval from preferences
 
-        handler.post(runnable); // Restart the loop with the new interval
+        // Check if the alarm is enabled, and if so, start the service
+        SharedPreferences prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE);
+        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
+        if (isAlarmOn && !isServiceRunning) {
+            isServiceRunning = true;
+            Intent serviceIntent = new Intent(this, AlarmCheckService.class);
+            startService(serviceIntent);
+            Log.d(TAG, "AAAAAAAAAAAAAAAAAAAAAAAAAAlarmCheckService started from MainActivity");
+        }
+        else if (!isAlarmOn && isServiceRunning) { // todo TEST
+            Intent serviceIntent = new Intent(this, AlarmCheckService.class);
+            stopService(serviceIntent);
+            Log.d(TAG, "AAAAAAAAAAAAAAAAAAAAAAAAlarmCheckService stopped from MainActivity");
+        } else {
+            Log.d(TAG, "AAAAAAAAAAAAAAAAAAAAAAAlarmCheckService is already running or not needed");
+        }
     }
 
     @Override
@@ -204,6 +219,15 @@ public class MainActivity extends AppCompatActivity {
         if (handler != null && runnable != null) {
             handler.removeCallbacks(runnable);
              Log.d(TAG, "onDestroy: Boucle de récupération du prix arrêtée.");
+        }
+
+        // Check if the alarm is enabled, and if so, stop the service
+        SharedPreferences prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE);
+        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
+        if (isAlarmOn) {
+            Intent serviceIntent = new Intent(this, AlarmCheckService.class);
+            stopService(serviceIntent);
+            Log.d(TAG, "AlarmCheckService stopped from MainActivity");
         }
     }
 
@@ -220,7 +244,6 @@ public class MainActivity extends AppCompatActivity {
                     double currentPrice = response.body().getPrice(); // Récupère le prix actuel
                     Log.d(TAG, response.body().getSymbol() + " : currentPrice = " + currentPrice + ", lastPrice = " + lastPrice);
                     bitcoinPriceTextView.setText(response.body().getSymbol()+" : $" + currentPrice); // Met à jour l'affichage //todo : recup symbole par les pref quand elle existeront
-                    comparePriceWithAlarm(currentPrice);
 
                     // Si un dernier prix existe, calcule la variation
                     float tolerancePercentage = prefs.getFloat("tolerance_percentage", -1); // Récupère la tolérance
@@ -272,32 +295,6 @@ public class MainActivity extends AppCompatActivity {
             if (allGranted) { // Toutes les permissions (Bluetooth Connect, Scan, Fine Location) ont été accordées
                 Log.i(TAG, "Toutes les permissions nécessaires (Bluetooth/Localisation) ont été accordées.");
             }
-        }
-    }
-
-    // Method to compare the current price with the alarm settings
-    private void comparePriceWithAlarm(double currentPrice) {
-        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false); // Load alarm state
-        if (isAlarmOn && prefs.contains("trigger_price") && prefs.contains("is_above")) { // Only proceed if alarm is ON and settings are present
-                double triggerPrice = Double.parseDouble(prefs.getString("trigger_price", "0.0"));
-                boolean isAbove = prefs.getBoolean("is_above", false);
-
-                Log.d(TAG, "comparing : trigger Price = " + triggerPrice + ", is Above = " + isAbove + " currentPrice : " + currentPrice);
-                if ((!isAbove && currentPrice >= triggerPrice) || (isAbove && currentPrice <= triggerPrice)) {
-                    // Trigger alarm!
-                    Log.d(TAG, "ALARM TRIGGERED!");
-                    triggerAlarm();
-
-                } else {
-                    Log.d(TAG, "Not Triggered !");
-                }
-        }
-    }
-
-    // Method to trigger the alarm (show a Toast) only if alarm is on
-    private void triggerAlarm() {
-        if(prefs.getBoolean("is_alarm_on", false)){
-            Toast.makeText(MainActivity.this, "Alarm triggered!", Toast.LENGTH_LONG).show();
         }
     }
 }

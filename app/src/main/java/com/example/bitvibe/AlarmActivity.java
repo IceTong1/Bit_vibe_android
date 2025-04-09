@@ -133,6 +133,8 @@ public class AlarmActivity extends AppCompatActivity {
                         Toast.makeText(AlarmActivity.this, "Alarm saved", Toast.LENGTH_SHORT).show();
                         Log.d(TAG, "Alarm saved: Trigger Price = " + triggerPrice + ", Current Price = " + currentPrice + " Is Above = " + isAbove);
 
+                        // todo :  lauch a loop or something to check if the alarm should be triggered
+
 
                     } catch (NumberFormatException e) {
                         Log.e(TAG, "Error parsing trigger price: " + triggerPriceStr, e);
