@@ -3,14 +3,14 @@ package com.example.bitvibe;
 import android.content.Context;
 import android.content.SharedPreferences;
 import androidx.test.core.app.ApplicationProvider;
-import androidx.test.ext.junit.runners.AndroidJUnit4;
+//import androidx.test.ext.junit.runners.AndroidJUnit4;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import java.io.File;
 
 import static org.junit.Assert.assertFalse;
 
-@RunWith(AndroidJUnit4.class)
+//@RunWith(AndroidJUnit4.class)
 public class SecurityTest {
 
     // Teste si les préférences partagées sont sécurisées (Test if shared preferences are secure)
