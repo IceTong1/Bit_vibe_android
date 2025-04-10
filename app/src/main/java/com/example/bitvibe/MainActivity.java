@@ -1,301 +1,464 @@
 package com.example.bitvibe;
 
+import android.Manifest;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Looper;
+import android.util.Log;
+import android.widget.Button;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import android.Manifest;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.os.Bundle;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.TextView;
-import android.widget.Toast;
-import android.util.Log;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
+import com.example.bitvibe.bracelet.BraceletConnectActivity; // Pour les constantes MAC si besoin
+import com.kkmcn.kbeaconlib2.KBConnState;
+import com.kkmcn.kbeaconlib2.KBeacon;
+
+import java.util.Map;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
-import android.content.SharedPreferences;
 
-import android.os.Handler;
-import android.os.Looper;
-
-// Import de la nouvelle activité
-import com.example.bitvibe.bracelet.BraceletConnectActivity;
-
-// Activité principale de l'application BitVibe
 public class MainActivity extends AppCompatActivity {
-    private SharedPreferences prefs;   //pour les settings
-    // Constante pour les logs
+
+    // --- Constantes et Variables Existantes ---
     private static final String TAG = "MainActivity";
-    // Code de demande pour les permissions Bluetooth
     private static final int REQUEST_BLUETOOTH_PERMISSIONS = 1;
-    // Interface pour appeler l'API de Binance
     public static BinanceApi binanceApi;
-    // TextView pour afficher le prix du Bitcoin
+
     private TextView bitcoinPriceTextView;
-    // EditText pour entrer la tolérance de variation (Note : nom de variable "tolassociatedérance" semble incorrect)
-    private EditText toleranceEditText;
-    // Handler pour exécuter des tâches sur le thread principal
-    private Handler handler = new Handler(Looper.getMainLooper()); // Préciser Looper.getMainLooper() est une bonne pratique
-    // Runnable pour récupérer le prix périodiquement
+    private TextView statusBraceletLeftTextView;
+    private TextView statusBraceletRightTextView;
+
+    private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable runnable;
-    // Dernier prix connu du Bitcoin (-1 au départ)
     private double lastPrice = -1;
-    // Intervalle minimum entre les mises à jour du prix (en secondes)
     private int minInterval;
-    // Variable pour vérifier si le Runnable a été initialisé
     private boolean asBeenInitialized = false;
-    // Verfier si le servie alarm est lancé
-    private static boolean  isServiceRunning = false;
+    private static boolean isServiceRunning = false;
+    private SharedPreferences prefs;
+
+    // --- Variables pour le Service Bluetooth ---
+    private BluetoothConnectionService mBluetoothService;
+    private boolean mBound = false;
+    private KBConnState mLeftBraceletState = KBConnState.Disconnected;
+    private KBConnState mRightBraceletState = KBConnState.Disconnected;
 
 
-    // Méthode appelée lors de la création de l'activité
+    private static final String LEFT_BRACELET_MAC = "BC:57:29:13:FA:DE";
+    private static final String RIGHT_BRACELET_MAC = "BC:57:29:13:FA:E0";
+
+    // --- ServiceConnection pour BluetoothConnectionService ---
+    private final ServiceConnection mBluetoothConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            BluetoothConnectionService.LocalBinder binder = (BluetoothConnectionService.LocalBinder) service;
+            mBluetoothService = binder.getService();
+            mBound = true;
+            Log.d(TAG, "BluetoothConnectionService connecté");
+            updateUiWithCurrentState(); // Mettre à jour l'UI avec les états actuels
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            Log.d(TAG, "BluetoothConnectionService déconnecté");
+            mBound = false;
+            mBluetoothService = null;
+            mLeftBraceletState = KBConnState.Disconnected;
+            mRightBraceletState = KBConnState.Disconnected;
+            updateIndividualStatusTextViews(); // Mettre à jour l'UI
+        }
+    };
+
+    // --- BroadcastReceiver pour les états de connexion Bluetooth ---
+    private final BroadcastReceiver mConnStateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+            if (BluetoothConnectionService.ACTION_CONN_STATE_CHANGED.equals(action)) {
+                String mac = intent.getStringExtra(BluetoothConnectionService.EXTRA_CONN_STATE_MAC);
+                int stateOrdinal = intent.getIntExtra(BluetoothConnectionService.EXTRA_CONN_STATE, KBConnState.Disconnected.ordinal());
+                KBConnState state = KBConnState.values()[stateOrdinal];
+
+
+                Log.d(TAG, "MainActivity: Broadcast reçu pour " + mac + " -> " + state);
+
+
+                boolean stateChanged = false;
+                if (LEFT_BRACELET_MAC.equalsIgnoreCase(mac)) {
+                    if (mLeftBraceletState != state) {
+                        mLeftBraceletState = state;
+                        stateChanged = true;
+                    }
+                } else if (RIGHT_BRACELET_MAC.equalsIgnoreCase(mac)) {
+                    if (mRightBraceletState != state) {
+                        mRightBraceletState = state;
+                        stateChanged = true;
+                    }
+                }
+
+                if(stateChanged){
+                    updateIndividualStatusTextViews();
+                }
+            }
+        }
+    };
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Charge le layout de l'activité depuis activity_main.xml
         setContentView(R.layout.activity_main);
 
-        // --- Bouton Paramètres ---
-        // Associer le bouton au code
+        // --- Initialisation UI ---
+        bitcoinPriceTextView = findViewById(R.id.bitcoinPriceTextView);
+
+        try {
+            statusBraceletLeftTextView = findViewById(R.id.status_bracelet_left);
+            statusBraceletRightTextView = findViewById(R.id.status_bracelet_right);
+        } catch (Exception e) {
+            Log.e(TAG, "Erreur: TextView(s) de statut de bracelet non trouvé(s) dans activity_main.xml.", e);
+            statusBraceletLeftTextView = null;
+            statusBraceletRightTextView = null;
+        }
+
+
+        prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE);
+        initializeDefaultPrefs();
+        logLoadedPrefs();
+        setupButtons();
+        checkAndRequestBluetoothPermissions();
+        setupRetrofit();
+        initializeLoop();
+
+
+        Intent serviceIntent = new Intent(this, BluetoothConnectionService.class);
+        try {
+            ContextCompat.startForegroundService(this, serviceIntent);
+        } catch (Exception e) {
+            Log.e(TAG, "Impossible de démarrer le service en foreground", e);
+            startService(serviceIntent);
+        }
+        bindService(serviceIntent, mBluetoothConnection, Context.BIND_AUTO_CREATE);
+        Log.d(TAG, "Tentative de démarrage et de liaison au BluetoothConnectionService.");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        minInterval = prefs.getInt("refresh_interval", 5);
+        manageAlarmCheckService();
+
+
+        IntentFilter filter = new IntentFilter(BluetoothConnectionService.ACTION_CONN_STATE_CHANGED);
+        LocalBroadcastManager.getInstance(this).registerReceiver(mConnStateReceiver, filter);
+        Log.d(TAG, "BroadcastReceiver Bluetooth enregistré.");
+
+
+        if (mBound) {
+            updateUiWithCurrentState();
+        } else {
+            mLeftBraceletState = KBConnState.Disconnected;
+            mRightBraceletState = KBConnState.Disconnected;
+            updateIndividualStatusTextViews();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mConnStateReceiver);
+        Log.d(TAG, "BroadcastReceiver Bluetooth désenregistré.");
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (mBound) {
+            unbindService(mBluetoothConnection);
+            mBound = false;
+            mBluetoothService = null;
+            Log.d(TAG, "Délié du BluetoothConnectionService.");
+        }
+    }
+
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (handler != null && runnable != null) {
+            handler.removeCallbacks(runnable);
+            Log.d(TAG, "onDestroy: Boucle de récupération du prix arrêtée.");
+        }
+        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
+        if (isAlarmOn && isServiceRunning) {
+            Intent serviceIntent = new Intent(this, AlarmCheckService.class);
+            stopService(serviceIntent);
+            isServiceRunning = false;
+            Log.d(TAG, "AlarmCheckService arrêté depuis MainActivity onDestroy");
+        }
+    }
+
+
+    private void setupButtons() {
         Button settingsButton = findViewById(R.id.settingsButton);
-        // Ajouter le listener pour ouvrir SettingsActivity
         settingsButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);
         });
 
-        // --- NOUVEAU : Bouton Connexion Bracelets ---
-        // Associer le nouveau bouton (suppose que son ID dans activity_main.xml est "braceletConnectButton")
-        Button braceletConnectButton = findViewById(R.id.braceletConnectButton); // Assurez-vous que cet ID existe dans votre XML
-        // Ajouter le listener pour ouvrir BraceletConnectActivity
+        Button braceletConnectButton = findViewById(R.id.braceletConnectButton);
         braceletConnectButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, BraceletConnectActivity.class);
             startActivity(intent);
         });
-        // --- Fin NOUVEAU ---
 
-        // --- Bouton Alarm ---
-        // Associer le bouton au code
         Button alarmButton = findViewById(R.id.alarmButton);
-        // Ajouter le listener pour ouvrir SettingsActivity
         alarmButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, AlarmActivity.class);
             startActivity(intent);
         });
+    }
 
-
-
-        // Créer ou charger les préférences partagées
-        prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE); // Sauvegarder dans un fichier nommé "BitVibePrefs"
+    private void initializeDefaultPrefs() {
         SharedPreferences.Editor editor = prefs.edit();
-        // Définir les valeurs par défaut seulement si elles n'existent pas
-        if (!prefs.contains("refresh_interval")) {
-            editor.putInt("refresh_interval", 5);          // Intervalle minimum de vibration : 5s
-        }
-        if (!prefs.contains("vibration_intensity")) {
-            editor.putInt("vibration_intensity", 2);       // Intensité de vibration : niveau 2
-        }
-        if (!prefs.contains("currency")) {
-            editor.putString("currency", "EUR");           // Devise : Euros
-        }
-        if (!prefs.contains("language")) {
-            editor.putString("language", "fr");            // Langue : Français
-        }
-        if (!prefs.contains("tolerance_percentage")) {
-            editor.putFloat("tolerance_percentage", (float) 0.01); // Tolérance 0.01% ? Ou 1% ? (0.01 = 1%)
-        }
-        editor.apply(); // Sauvegarde les modifications
+        if (!prefs.contains("refresh_interval")) editor.putInt("refresh_interval", 5);
+        if (!prefs.contains("vibration_intensity")) editor.putInt("vibration_intensity", 2);
+        if (!prefs.contains("currency")) editor.putString("currency", "EUR");
+        if (!prefs.contains("language")) editor.putString("language", "fr");
+        if (!prefs.contains("tolerance_percentage")) editor.putFloat("tolerance_percentage", 0.01f);
+        editor.apply();
+    }
 
-
-        /////////////////////////// Lire les valeurs des paramètres pour debug //////////////////////////////////
-        minInterval = prefs.getInt("refresh_interval", 5);   // Valeur par défaut 5 si pas trouvée
+    private void logLoadedPrefs() {
+        minInterval = prefs.getInt("refresh_interval", 5);
         int intensity = prefs.getInt("vibration_intensity", -1);
-        String currency = prefs.getString("currency", "EUR"); // Valeur par défaut EUR si pas trouvée
-        String language = prefs.getString("language", "fr");  // Valeur par défaut fr si pas trouvée
-        float tolerancePercentage = prefs.getFloat("tolerance_percentage", 0.01f); // Valeur par défaut 0.01f si pas trouvée
-        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false); // Valeur par défaut false si pas trouvée
-
-        Log.d(TAG, "VALEURS CHARGEES : refresh_interval="
-                + minInterval
-                + ", vibration_intensity=" + intensity
-                + ", currency=" + currency
-                + ", language=" + language
-                + ", tolerance_percentage=" + tolerancePercentage
-                + ", is_alarm_on=" + isAlarmOn);
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-        // Associe les vues aux éléments du layout
-        bitcoinPriceTextView = findViewById(R.id.bitcoinPriceTextView);
-        // Note: toleranceEditText n'est pas initialisé ici via findViewById. S'il existe dans le layout, il faudrait l'ajouter.
-        // toleranceEditText = findViewById(R.id.toleranceEditText); // Exemple si l'ID existe
-
-
-        /// ///////////////////////////BLUETOOTH////////////////////////////////////////////////////
-        // Vérifie si les permissions Bluetooth sont accordées, sinon les demande
-        // AJOUT: Vérifier aussi les permissions de localisation si nécessaire pour le scan pré-Android 12
-        // (Bien que la demande soit faite ici, la logique de scan dans BraceletConnectActivity devra aussi gérer ces permissions)
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) { // Ajout vérification localisation
-            ActivityCompat.requestPermissions(this,
-                    new String[]{
-                            Manifest.permission.BLUETOOTH_CONNECT,
-                            Manifest.permission.BLUETOOTH_SCAN,
-                            Manifest.permission.ACCESS_FINE_LOCATION // Ajout demande localisation
-                    },
-                    REQUEST_BLUETOOTH_PERMISSIONS);
-        }
-        ////////////////////////////////////////////////////////////////////////////////////////////
-
-
-        // Configure Retrofit pour communiquer avec l'API de Binance
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("https://api.binance.com/") // URL de base de l'API
-                .addConverterFactory(GsonConverterFactory.create()) // Utilise Gson pour parser le JSON
-                .build();
-
-        // Crée une instance de l'interface BinanceApi
-        binanceApi = retrofit.create(BinanceApi.class);
-
-
-        //////////////////////////////// A AMELIORER ///////////////////////////////////////////
-        // L'initialisation de la boucle ici pourrait être problématique si les permissions ne sont pas encore accordées.
-        // Idéalement, démarrer la boucle seulement après confirmation des permissions nécessaires.
-        ////////////////////////////////////////////////////////////////////////////////////////
-        initializeLoop(); // Initialise la boucle de récupération du prix
+        String currency = prefs.getString("currency", "N/A");
+        String language = prefs.getString("language", "N/A");
+        float tolerancePercentage = prefs.getFloat("tolerance_percentage", -1.0f);
+        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
+        Log.d(TAG, "VALEURS CHARGEES: refresh=" + minInterval
+                + ", intensity=" + intensity + ", currency=" + currency
+                + ", lang=" + language + ", tolerance=" + tolerancePercentage
+                + ", alarmOn=" + isAlarmOn);
     }
 
 
+    private void checkAndRequestBluetoothPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{
+                                Manifest.permission.BLUETOOTH_CONNECT,
+                                Manifest.permission.BLUETOOTH_SCAN,
+                                Manifest.permission.ACCESS_FINE_LOCATION
+                        },
+                        REQUEST_BLUETOOTH_PERMISSIONS);
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                        REQUEST_BLUETOOTH_PERMISSIONS);
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_BLUETOOTH_PERMISSIONS) {
+            boolean allGranted = true;
+            if (grantResults.length > 0) {
+                for (int grantResult : grantResults) {
+                    if (grantResult != PackageManager.PERMISSION_GRANTED) {
+                        allGranted = false;
+                        break;
+                    }
+                }
+            } else {
+                allGranted = false;
+            }
+
+            if (allGranted) {
+                Log.i(TAG, "Toutes les permissions nécessaires (Bluetooth/Localisation) ont été accordées.");
+            } else {
+                Log.w(TAG, "Certaines permissions Bluetooth/Localisation ont été refusées.");
+                Toast.makeText(this, "Permissions manquantes, certaines fonctionnalités peuvent ne pas marcher.", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+
+    private void setupRetrofit() {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("https://api.binance.com/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        binanceApi = retrofit.create(BinanceApi.class);
+    }
+
     private void initializeLoop() {
-        // Vérifie si le Runnable a déjà été initialisé
-        if (!this.asBeenInitialized) { // Simplification de la condition
-            this.asBeenInitialized = true; // Marque comme initialisé
-            Log.d(TAG, "Initialisation de la boucle de récupération du prix");
+        if (!this.asBeenInitialized) {
+            this.asBeenInitialized = true;
+            Log.d(TAG, "Initialisation boucle prix");
             runnable = new Runnable() {
                 @Override
                 public void run() {
-                    fetchBitcoinPrice(); // Récupère le prix
-                    // Reprogramme l'exécution après l'intervalle défini (converti en millisecondes)
+                    fetchBitcoinPrice();
                     handler.postDelayed(this, minInterval * 1000L);
                 }
             };
-            handler.post(runnable); // Lance la première exécution immédiatement
+            handler.post(runnable);
         }
     }
 
-    // onResume is called when the activity becomes visible to the user
-    @Override
-    protected void onResume() {
-        super.onResume();
-        minInterval = prefs.getInt("refresh_interval", 5); // Get the new interval from preferences
-
-        // Check if the alarm is enabled, and if so, start the service
-        SharedPreferences prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE);
-        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
-        if (isAlarmOn && !isServiceRunning) {
-            isServiceRunning = true;
-            Intent serviceIntent = new Intent(this, AlarmCheckService.class);
-            startService(serviceIntent);
-            Log.d(TAG, "AAAAAAAAAAAAAAAAAAAAAAAAAAlarmCheckService started from MainActivity");
-        }
-        else if (!isAlarmOn && isServiceRunning) {
-            Intent serviceIntent = new Intent(this, AlarmCheckService.class);
-            stopService(serviceIntent);
-            Log.d(TAG, "AAAAAAAAAAAAAAAAAAAAAAAAlarmCheckService stopped from MainActivity");
-        } else {
-            Log.d(TAG, "AAAAAAAAAAAAAAAAAAAAAAAlarmCheckService is already running or not needed");
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        // S'assure d'arrêter la boucle lorsque l'activité est détruite
-        if (handler != null && runnable != null) {
-            handler.removeCallbacks(runnable);
-             Log.d(TAG, "onDestroy: Boucle de récupération du prix arrêtée.");
-        }
-
-        // Check if the alarm is enabled, and if so, stop the service
-        SharedPreferences prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE);
-        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
-        if (isAlarmOn) {
-            Intent serviceIntent = new Intent(this, AlarmCheckService.class);
-            stopService(serviceIntent);
-            Log.d(TAG, "AlarmCheckService stopped from MainActivity");
-        }
-    }
-
-    // Méthode pour récupérer le prix du Bitcoin depuis l'API de Binance et afficher la variation
     private void fetchBitcoinPrice() {
-        // Crée une requête pour obtenir le prix
+        if (binanceApi == null) return;
         Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice();
-        // Exécute la requête de manière asynchrone
         call.enqueue(new Callback<BinancePriceResponse>() {
             @Override
-            public void onResponse(Call<BinancePriceResponse> call, Response<BinancePriceResponse> response) {
-                // Vérifie si la réponse est valide
+            public void onResponse(@NonNull Call<BinancePriceResponse> call, @NonNull Response<BinancePriceResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    double currentPrice = response.body().getPrice(); // Récupère le prix actuel
-                    Log.d(TAG, response.body().getSymbol() + " : currentPrice = " + currentPrice + ", lastPrice = " + lastPrice);
-                    bitcoinPriceTextView.setText(response.body().getSymbol()+" : $" + currentPrice); // Met à jour l'affichage //todo : recup symbole par les pref quand elle existeront
-
-                    // Si un dernier prix existe, calcule la variation
-                    float tolerancePercentage = prefs.getFloat("tolerance_percentage", -1); // Récupère la tolérance
+                    double currentPrice = response.body().getPrice();
+                    String symbol = response.body().getSymbol();
+                    Log.d(TAG, symbol + " : currentPrice = " + currentPrice + ", lastPrice = " + lastPrice);
+                    if (bitcoinPriceTextView != null) {
+                        bitcoinPriceTextView.setText(String.format(java.util.Locale.US, "%s : $%.2f", symbol, currentPrice));
+                    }
+                    float tolerancePercentage = prefs.getFloat("tolerance_percentage", 0.01f);
                     if (lastPrice != -1) {
-                        double percentageChange = ((currentPrice - lastPrice) / lastPrice) * 100; // Variation en %
-                        if (percentageChange > tolerancePercentage) { // Si hausse significative
-                            lastPrice = currentPrice; // Met à jour le dernier prix
-                            Log.d(TAG, "Hausse détectée (+" + String.format("%.2f", percentageChange) + "%)");
-                            Toast.makeText(MainActivity.this, "Hausse détectée (+" + String.format("%.2f", percentageChange) + "%)", Toast.LENGTH_SHORT).show();
-                        } else if (percentageChange < -tolerancePercentage) { // Si baisse significative
-                            lastPrice = currentPrice; // Met à jour le dernier prix
-                            Log.d(TAG, "Baisse détectée (" + String.format("%.2f", percentageChange) + "%)");
-                            Toast.makeText(MainActivity.this, "Baisse détectée (" + String.format("%.2f", percentageChange) + "%)", Toast.LENGTH_SHORT).show();
-                        } else { // Si stable
-                            Log.d(TAG, "Prix stable (" + String.format("%.2f", percentageChange) + "%)");
+                        double percentageChange = ((currentPrice - lastPrice) / lastPrice) * 100;
+                        if (Math.abs(percentageChange) > tolerancePercentage) {
+                            Log.d(TAG, (percentageChange > 0 ? "Hausse" : "Baisse") + " détectée (" + String.format(java.util.Locale.US, "%.2f", percentageChange) + "%)");
+                            lastPrice = currentPrice;
+                        } else {
+                            Log.d(TAG, "Prix stable (" + String.format(java.util.Locale.US, "%.2f", percentageChange) + "%)");
                         }
                     } else {
-                        lastPrice = currentPrice; // Met à jour le dernier prix si c'est le premier prix récupéré
+                        lastPrice = currentPrice;
                     }
-                    // Le dernier prix n'est pas mis tant qu'il n'y a pas eu de variation significative
-
-                } else { // En cas d'erreur dans la réponse
+                } else {
                     Log.e(TAG, "Erreur API : " + response.code());
-                    bitcoinPriceTextView.setText("Erreur API : " + response.code());
+                    if (bitcoinPriceTextView != null) bitcoinPriceTextView.setText("Erreur API : " + response.code());
                 }
             }
 
             @Override
-            public void onFailure(Call<BinancePriceResponse> call, Throwable t) { // En cas d'échec réseau ou autre problème
-                Log.e(TAG, "Échec de la requête API : " + t.getMessage(), t); // Logger l'exception complète est utile
-                bitcoinPriceTextView.setText("Échec de la connexion");
+            public void onFailure(@NonNull Call<BinancePriceResponse> call, @NonNull Throwable t) {
+                Log.e(TAG, "Échec requête API : " + t.getMessage(), t);
+                if (bitcoinPriceTextView != null) bitcoinPriceTextView.setText("Échec connexion API");
             }
         });
     }
 
-    // Méthode pour gérer les résultats des demandes de permissions
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_BLUETOOTH_PERMISSIONS) { // Vérifie si c'est une réponse pour nos permissions
-            boolean allGranted = true;
-            for (int grantResult : grantResults) {
-                if (grantResult != PackageManager.PERMISSION_GRANTED) {
-                    allGranted = false;
-                    break;
-                }
-            }
+    private void manageAlarmCheckService() {
+        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
+        Intent serviceIntent = new Intent(this, AlarmCheckService.class);
 
-            if (allGranted) { // Toutes les permissions (Bluetooth Connect, Scan, Fine Location) ont été accordées
-                Log.i(TAG, "Toutes les permissions nécessaires (Bluetooth/Localisation) ont été accordées.");
+        if (isAlarmOn) {
+            if (!isServiceRunning) {
+                try {
+                    ContextCompat.startForegroundService(this, serviceIntent);
+                    isServiceRunning = true;
+                    Log.d(TAG, "AlarmCheckService démarré depuis MainActivity onResume");
+                } catch (Exception e) {
+                    Log.e(TAG, "Erreur démarrage AlarmCheckService", e);
+                }
+            } else {
+                Log.d(TAG, "AlarmCheckService déjà en cours.");
+            }
+        } else {
+            if (isServiceRunning) {
+                stopService(serviceIntent);
+                isServiceRunning = false;
+                Log.d(TAG, "AlarmCheckService arrêté depuis MainActivity onResume (alarme OFF)");
+            } else {
+                Log.d(TAG, "AlarmCheckService déjà arrêté.");
             }
         }
     }
-}
 
+
+    /**
+     * Met à jour les états locaux et l'UI en interrogeant le service.
+     */
+    private void updateUiWithCurrentState() {
+        if (mBound && mBluetoothService != null) {
+            Log.d(TAG, "Mise à jour UI avec état actuel du service");
+            mLeftBraceletState = mBluetoothService.getBeaconState(LEFT_BRACELET_MAC);
+            mRightBraceletState = mBluetoothService.getBeaconState(RIGHT_BRACELET_MAC);
+            updateIndividualStatusTextViews();
+        } else {
+            Log.w(TAG, "Impossible de mettre à jour l'UI, service non lié");
+
+            mLeftBraceletState = KBConnState.Disconnected;
+            mRightBraceletState = KBConnState.Disconnected;
+            updateIndividualStatusTextViews();
+        }
+    }
+
+
+    /**
+     * Met à jour les TextViews affichant l'état individuel des bracelets.
+     */
+    private void updateIndividualStatusTextViews() {
+        runOnUiThread(() -> {
+            if (statusBraceletLeftTextView != null) {
+                statusBraceletLeftTextView.setText(getStateString(mLeftBraceletState));
+                // Optionnel: Changer couleur selon état
+                // statusBraceletLeftTextView.setTextColor(getStateColor(mLeftBraceletState));
+            } else {
+                Log.w(TAG,"statusBraceletLeftTextView est null");
+            }
+
+            if (statusBraceletRightTextView != null) {
+                statusBraceletRightTextView.setText(getStateString(mRightBraceletState));
+                // Optionnel: Changer couleur selon état
+                // statusBraceletRightTextView.setTextColor(getStateColor(mRightBraceletState));
+            } else {
+                Log.w(TAG,"statusBraceletRightTextView est null");
+            }
+        });
+    }
+
+    /**
+     * Convertit l'état de connexion en une chaîne de caractères lisible.
+     */
+    private String getStateString(KBConnState state) {
+        if (state == null) return "Inconnu";
+        switch (state) {
+            case Connected:
+                return "Connecté";
+            case Connecting:
+                return "Connexion...";
+            case Disconnecting:
+                return "Déconnexion...";
+            case Disconnected:
+            default:
+                return "Déconnecté";
+        }
+    }
+
+
+}
