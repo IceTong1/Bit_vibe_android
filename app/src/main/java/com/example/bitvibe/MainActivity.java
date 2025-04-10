@@ -208,7 +208,7 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "onDestroy: Boucle de récupération du prix arrêtée.");
         }
         boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
-        if (isAlarmOn && isServiceRunning) { //TODO verifier le if
+        if (isAlarmOn && isServiceRunning) {
             Intent serviceIntent = new Intent(this, AlarmCheckService.class);
             stopService(serviceIntent);
             isServiceRunning = false;
@@ -353,6 +353,7 @@ public class MainActivity extends AppCompatActivity {
                     if (lastPrice != -1) {
                         double percentageChange = ((currentPrice - lastPrice) / lastPrice) * 100;
                         if (Math.abs(percentageChange) > tolerancePercentage) {
+                            //TODO : send vibrations to bracelets
                             Log.d(TAG, (percentageChange > 0 ? "Hausse" : "Baisse") + " détectée (" + String.format(java.util.Locale.US, "%.2f", percentageChange) + "%)");
                             lastPrice = currentPrice;
                         } else {

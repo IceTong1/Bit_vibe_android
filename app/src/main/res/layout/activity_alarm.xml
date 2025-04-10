@@ -45,6 +45,7 @@
         android:layout_marginStart="144dp"
         android:layout_marginTop="40dp"
         android:text="OFF"
+        android:textAppearance="@style/TextAppearance.AppCompat.Body1"
         android:textSize="24sp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/setAlarmButton" />

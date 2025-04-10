@@ -45,9 +45,10 @@ public class SettingsActivity extends AppCompatActivity {
         // Bind UI elements
         refreshIntervalEditText = findViewById(R.id.refresh_interval_edittext);
         tolerancePercentageEditText = findViewById(R.id.tolerance_percentage_edittext);
-        currencySpinner = findViewById(R.id.currency_spinner);
+        currencySpinner = findViewById(R.id.currency_spinner); // TODO : make it usefull or delete it
         vibrationIntensitySpinner = findViewById(R.id.vibration_intensity_spinner);
-        languageSpinner = findViewById(R.id.language_spinner);
+        languageSpinner = findViewById(R.id.language_spinner); // TODO : make it usefull or delete it
+        //TODO : add crypto setting (cryptoSpinner)
 
         // Load current settings
         int currentInterval = prefs.getInt("refresh_interval", 5); // Default: 5 seconds
