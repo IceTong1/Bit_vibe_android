@@ -353,7 +353,13 @@ public class MainActivity extends AppCompatActivity {
                     if (lastPrice != -1) {
                         double percentageChange = ((currentPrice - lastPrice) / lastPrice) * 100;
                         if (Math.abs(percentageChange) > tolerancePercentage) {
-                            //TODO : send vibrations to bracelets
+                            /*
+                            if(percentageChange > 0){
+                                //TODO : faire vibrer le bracelet droit
+                            }else{
+                                //TODO : faire vibrer le bracelet gauche
+                            }
+                            */
                             Log.d(TAG, (percentageChange > 0 ? "Hausse" : "Baisse") + " détectée (" + String.format(java.util.Locale.US, "%.2f", percentageChange) + "%)");
                             lastPrice = currentPrice;
                         } else {

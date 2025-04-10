@@ -127,7 +127,7 @@ public class AlarmCheckService extends Service {
 
     // Method to trigger the alarm (show a Toast)
     private void triggerAlarm() {
-         // TODO : send vibration to bracelet
+         // TODO : Faire vibrer les deux bracelets
         new Handler(Looper.getMainLooper()).post(() -> {
             Toast.makeText(getApplicationContext(), "PRICE ALARM TRIGGERED!", Toast.LENGTH_LONG).show();
         });
