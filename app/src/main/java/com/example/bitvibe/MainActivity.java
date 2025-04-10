@@ -165,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         minInterval = prefs.getInt("refresh_interval", 5);
-        manageAlarmCheckService();
+        manageAlarmCheckService(); // Vérifie et démarre/arrête le service d'alarme si nécessaire
 
 
         IntentFilter filter = new IntentFilter(BluetoothConnectionService.ACTION_CONN_STATE_CHANGED);
@@ -200,7 +200,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -209,78 +208,11 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "onDestroy: Boucle de récupération du prix arrêtée.");
         }
         boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
-        if (isAlarmOn && isServiceRunning) {
+        if (isAlarmOn && isServiceRunning) { //TODO verifier le if
             Intent serviceIntent = new Intent(this, AlarmCheckService.class);
             stopService(serviceIntent);
             isServiceRunning = false;
             Log.d(TAG, "AlarmCheckService arrêté depuis MainActivity onDestroy");
-        }
-    }
-
-
-    private void setupButtons() {
-        Button settingsButton = findViewById(R.id.settingsButton);
-        settingsButton.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
-            startActivity(intent);
-        });
-
-        Button braceletConnectButton = findViewById(R.id.braceletConnectButton);
-        braceletConnectButton.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, BraceletConnectActivity.class);
-            startActivity(intent);
-        });
-
-        Button alarmButton = findViewById(R.id.alarmButton);
-        alarmButton.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, AlarmActivity.class);
-            startActivity(intent);
-        });
-    }
-
-    private void initializeDefaultPrefs() {
-        SharedPreferences.Editor editor = prefs.edit();
-        if (!prefs.contains("refresh_interval")) editor.putInt("refresh_interval", 5);
-        if (!prefs.contains("vibration_intensity")) editor.putInt("vibration_intensity", 2);
-        if (!prefs.contains("currency")) editor.putString("currency", "EUR");
-        if (!prefs.contains("language")) editor.putString("language", "fr");
-        if (!prefs.contains("tolerance_percentage")) editor.putFloat("tolerance_percentage", 0.01f);
-        editor.apply();
-    }
-
-    private void logLoadedPrefs() {
-        minInterval = prefs.getInt("refresh_interval", 5);
-        int intensity = prefs.getInt("vibration_intensity", -1);
-        String currency = prefs.getString("currency", "N/A");
-        String language = prefs.getString("language", "N/A");
-        float tolerancePercentage = prefs.getFloat("tolerance_percentage", -1.0f);
-        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
-        Log.d(TAG, "VALEURS CHARGEES: refresh=" + minInterval
-                + ", intensity=" + intensity + ", currency=" + currency
-                + ", lang=" + language + ", tolerance=" + tolerancePercentage
-                + ", alarmOn=" + isAlarmOn);
-    }
-
-
-    private void checkAndRequestBluetoothPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{
-                                Manifest.permission.BLUETOOTH_CONNECT,
-                                Manifest.permission.BLUETOOTH_SCAN,
-                                Manifest.permission.ACCESS_FINE_LOCATION
-                        },
-                        REQUEST_BLUETOOTH_PERMISSIONS);
-            }
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                        REQUEST_BLUETOOTH_PERMISSIONS);
-            }
         }
     }
 
@@ -310,6 +242,74 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+
+    private void initializeDefaultPrefs() {
+        SharedPreferences.Editor editor = prefs.edit();
+        if (!prefs.contains("refresh_interval")) editor.putInt("refresh_interval", 5);
+        if (!prefs.contains("vibration_intensity")) editor.putInt("vibration_intensity", 2);
+        if (!prefs.contains("currency")) editor.putString("currency", "USD");
+        if (!prefs.contains("language")) editor.putString("language", "fr");
+        if (!prefs.contains("tolerance_percentage")) editor.putFloat("tolerance_percentage", 0.01f);
+        editor.apply();
+    }
+
+    private void logLoadedPrefs() {
+        minInterval = prefs.getInt("refresh_interval", -1);
+        int intensity = prefs.getInt("vibration_intensity", -1);
+        String currency = prefs.getString("currency", "N/A");
+        String language = prefs.getString("language", "N/A");
+        float tolerancePercentage = prefs.getFloat("tolerance_percentage", -1.0f);
+        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
+        Log.d(TAG, "VALEURS CHARGEES: refresh=" + minInterval + "\n"
+                + ", intensity=" + intensity + "\n"
+                + ", currency=" + currency + "\n"
+                + ", lang=" + language + "\n"
+                + ", tolerance=" + tolerancePercentage + "\n"
+                + ", alarmOn=" + isAlarmOn);
+    }
+
+    private void setupButtons() {
+        Button settingsButton = findViewById(R.id.settingsButton);
+        settingsButton.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+            startActivity(intent);
+        });
+
+        Button braceletConnectButton = findViewById(R.id.braceletConnectButton);
+        braceletConnectButton.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, BraceletConnectActivity.class);
+            startActivity(intent);
+        });
+
+        Button alarmButton = findViewById(R.id.alarmButton);
+        alarmButton.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, AlarmActivity.class);
+            startActivity(intent);
+        });
+    }
+
+    private void checkAndRequestBluetoothPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{
+                                Manifest.permission.BLUETOOTH_CONNECT,
+                                Manifest.permission.BLUETOOTH_SCAN,
+                                Manifest.permission.ACCESS_FINE_LOCATION
+                        },
+                        REQUEST_BLUETOOTH_PERMISSIONS);
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                        REQUEST_BLUETOOTH_PERMISSIONS);
+            }
+        }
+    }
+
     private void setupRetrofit() {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("https://api.binance.com/")
@@ -333,6 +333,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+
+
     private void fetchBitcoinPrice() {
         if (binanceApi == null) return;
         Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice();
@@ -344,7 +347,7 @@ public class MainActivity extends AppCompatActivity {
                     String symbol = response.body().getSymbol();
                     Log.d(TAG, symbol + " : currentPrice = " + currentPrice + ", lastPrice = " + lastPrice);
                     if (bitcoinPriceTextView != null) {
-                        bitcoinPriceTextView.setText(String.format(java.util.Locale.US, "%s : $%.2f", symbol, currentPrice));
+                        bitcoinPriceTextView.setText(String.format(symbol + " : " + currentPrice));
                     }
                     float tolerancePercentage = prefs.getFloat("tolerance_percentage", 0.01f);
                     if (lastPrice != -1) {
@@ -376,6 +379,7 @@ public class MainActivity extends AppCompatActivity {
         boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
         Intent serviceIntent = new Intent(this, AlarmCheckService.class);
 
+        // Démarrer seulement si l'alarme est activée et que le service n'est pas déjà en cours
         if (isAlarmOn) {
             if (!isServiceRunning) {
                 try {
@@ -388,7 +392,9 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 Log.d(TAG, "AlarmCheckService déjà en cours.");
             }
-        } else {
+        }
+        // Arrêter seulement si l'alarme est désactivée et que le service est en cours
+        else {
             if (isServiceRunning) {
                 stopService(serviceIntent);
                 isServiceRunning = false;
