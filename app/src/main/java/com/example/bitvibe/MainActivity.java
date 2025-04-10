@@ -338,7 +338,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void fetchBitcoinPrice() {
         if (binanceApi == null) return;
-        Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice();
+        String selectedCrypto = prefs.getString("crypto", "DOGEUSDT"); // Default to DOGEUSDT if not set
+        Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice(selectedCrypto); // Pass the symbol to the API call
+
         call.enqueue(new Callback<BinancePriceResponse>() {
             @Override
             public void onResponse(@NonNull Call<BinancePriceResponse> call, @NonNull Response<BinancePriceResponse> response) {

@@ -80,7 +80,10 @@ public class AlarmCheckService extends Service {
     // Method to check the alarm
     private void checkAlarm() {
         // Crée une requête pour obtenir le prix
-        Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice();
+        // Retrieve the selected cryptocurrency symbol from SharedPreferences
+        SharedPreferences prefs = getSharedPreferences("BitVibePrefs", Context.MODE_PRIVATE);
+        String selectedCrypto = prefs.getString("crypto", "DOGEUSDT"); // Default to DOGEUSDT if not set
+        Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice(selectedCrypto); // Pass the symbol to the API call
         // Exécute la requête de manière asynchrone
         call.enqueue(new Callback<BinancePriceResponse>() {
             @Override

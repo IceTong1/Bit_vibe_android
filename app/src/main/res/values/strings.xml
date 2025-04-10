@@ -26,6 +26,15 @@
         <item>french</item>
     </string-array>
 
+    <!-- Crypto array -->
+    <string-array name="crypto_array">
+        <item>BTCUSDT</item>
+        <item>DOGEUSDT</item>
+        <item>ETHUSDT</item>
+        <item>LTCUSDT</item>
+        <item>XRPUSDT</item>
+    </string-array>
+
 
     <!-- Other string resources -->
     <string name="refresh_interval">Refresh Interval (seconds):</string>

@@ -19,6 +19,7 @@ public class SettingsActivity extends AppCompatActivity {
     private Spinner currencySpinner;
     private Spinner vibrationIntensitySpinner;
     private Spinner languageSpinner;
+    private Spinner cryptoSpinner;
     private SharedPreferences prefs;
 
     @Override
@@ -48,7 +49,7 @@ public class SettingsActivity extends AppCompatActivity {
         currencySpinner = findViewById(R.id.currency_spinner); // TODO : make it usefull or delete it
         vibrationIntensitySpinner = findViewById(R.id.vibration_intensity_spinner);
         languageSpinner = findViewById(R.id.language_spinner); // TODO : make it usefull or delete it
-        //TODO : add crypto setting (cryptoSpinner)
+        cryptoSpinner = findViewById(R.id.crypto_spinner);
 
         // Load current settings
         int currentInterval = prefs.getInt("refresh_interval", 5); // Default: 5 seconds
@@ -91,6 +92,16 @@ public class SettingsActivity extends AppCompatActivity {
         languageSpinner.setSelection(languagePosition);
 
 
+        // Set up the crypto spinner
+        ArrayAdapter<CharSequence> cryptoAdapter = ArrayAdapter.createFromResource(this,
+                R.array.crypto_array, android.R.layout.simple_spinner_item);
+        cryptoAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        cryptoSpinner.setAdapter(cryptoAdapter);
+
+        // Set the current crypto in the spinner
+        String currentCrypto = prefs.getString("crypto", "bitcoin");
+        int cryptoPosition = cryptoAdapter.getPosition(currentCrypto);
+        cryptoSpinner.setSelection(cryptoPosition);
         //add edit text for tolerance percentage
 
 
@@ -100,7 +111,8 @@ public class SettingsActivity extends AppCompatActivity {
                 + " seconds, Currency: " + currentCurrency
                 + ", Vibration Intensity: " + currentIntensity
                 + ", Language: " + currentLanguage
-                + ", Tolerance Percentage: " + currentTolerance);
+                + ", Tolerance Percentage: " + currentTolerance
+                + ", Crypto: " + currentCrypto);
 
 
     }
@@ -134,6 +146,10 @@ public class SettingsActivity extends AppCompatActivity {
         String selectedLanguage = languageSpinner.getSelectedItem().toString();
         editor.putString("language", selectedLanguage);
 
+        //Save crypto
+        String selectedCrypto = cryptoSpinner.getSelectedItem().toString();
+        editor.putString("crypto", selectedCrypto);
+
         // Apply changes
         editor.apply();
         Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show();
@@ -143,7 +159,8 @@ public class SettingsActivity extends AppCompatActivity {
                 + " seconds, Currency: " + prefs.getString("currency", "null")
                 + ", Vibration Intensity: " + prefs.getInt("vibration_intensity", -1)
                 + ", Language: " + prefs.getString("language", "null")
-                + ", Tolerance Percentage: " + prefs.getFloat("tolerance_percentage", -1.0f));
+                + ", Tolerance Percentage: " + prefs.getFloat("tolerance_percentage", -1.0f)
+                + ", Crypto: " + prefs.getString("crypto", "null"));
     }
 }
 
