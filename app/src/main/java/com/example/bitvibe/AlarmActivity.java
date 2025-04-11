@@ -1,8 +1,6 @@
-// ----- Fichier : app/src/main/java/com/example/bitvibe/AlarmActivity.java -----
-
 package com.example.bitvibe;
 
-import static com.example.bitvibe.MainActivity.binanceApi; // Accès statique (pas idéal mais suit le code existant)
+import static com.example.bitvibe.MainActivity.binanceApi;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -27,75 +25,74 @@ import retrofit2.Response;
 public class AlarmActivity extends AppCompatActivity {
 
     private static final String PREFS_NAME = "BitVibePrefs";
-    private static final String PREF_TRIGGER_PRICE = "trigger_price";
-    private static final String PREF_IS_ABOVE = "is_above";
-    private static final String PREF_ALARM_ON = "is_alarm_on";
+    // Nouvelles clés de préférences
+    private static final String PREF_HIGH_TRIGGER_PRICE = "high_trigger_price";
+    private static final String PREF_IS_HIGH_ALARM_ON = "is_high_alarm_on";
+    private static final String PREF_LOW_TRIGGER_PRICE = "low_trigger_price";
+    private static final String PREF_IS_LOW_ALARM_ON = "is_low_alarm_on";
+
     private static final String TAG = "AlarmActivity";
 
-    private EditText triggerPriceEditText;
-    private Button setAlarmButton;
+    private EditText highTriggerPriceEditText;
+    private EditText lowTriggerPriceEditText;
+    private Switch highAlarmSwitch;
+    private Switch lowAlarmSwitch;
+    private Button saveAlarmsButton; // Renommé
     private TextView currentPriceTextView;
     private SharedPreferences sharedPreferences;
-    private boolean isAbove; // Utilisé pour déterminer la condition initiale lors de la sauvegarde
-    private Switch onOffSwitch;
-    // La variable locale isAlarmOn n'est plus vraiment nécessaire ici car on force à ON lors du save
-    // mais le listener du switch en a encore besoin pour la désactivation manuelle.
-    private boolean isAlarmOn;
+
     private Handler priceHandler = new Handler(Looper.getMainLooper());
     private Runnable priceRunnable;
-    private int priceUpdateIntervalSeconds = 5; // Intervalle par défaut (secondes)
+    private int priceUpdateIntervalSeconds = 5;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_alarm);
+        setContentView(R.layout.activity_alarm); // Utilise le nouveau layout
 
         // Bouton Retour
         Button backButton = findViewById(R.id.mainActivityButton);
         backButton.setOnClickListener(v -> {
-            // Pas besoin de saveSettings ici si le bouton retour ne doit pas sauvegarder/activer
             OnBackPressedDispatcher dispatcher = getOnBackPressedDispatcher();
             dispatcher.onBackPressed();
         });
 
-        // Initialiser SharedPreferences
         sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 
         // Bind UI elements
-        triggerPriceEditText = findViewById(R.id.triggerPriceEditText);
-        setAlarmButton = findViewById(R.id.setAlarmButton);
-        onOffSwitch = findViewById(R.id.onOFFSwitch);
-        currentPriceTextView = findViewById(R.id.currentPriceTextView); // Binding du nouveau TextView
+        highTriggerPriceEditText = findViewById(R.id.highTriggerPriceEditText);
+        lowTriggerPriceEditText = findViewById(R.id.lowTriggerPriceEditText);
+        highAlarmSwitch = findViewById(R.id.highAlarmSwitch);
+        lowAlarmSwitch = findViewById(R.id.lowAlarmSwitch);
+        saveAlarmsButton = findViewById(R.id.saveAlarmsButton);
+        currentPriceTextView = findViewById(R.id.currentPriceTextView);
 
-        // Lire l'intervalle de rafraîchissement depuis les préférences (pour l'affichage du prix actuel)
         priceUpdateIntervalSeconds = sharedPreferences.getInt("refresh_interval", 5);
 
-        // Charger l'alarme sauvegardée (pour afficher les valeurs précédentes)
-        loadAlarm();
+        // Charger les états et valeurs sauvegardés
+        loadAlarmSettings();
 
-        // Listener bouton Set Alarm
-        setAlarmButton.setOnClickListener(v -> saveAlarm());
+        // Listener bouton Sauvegarder
+        saveAlarmsButton.setOnClickListener(v -> saveAlarmSettings());
 
-        // Listener Switch ON/OFF (pour la désactivation manuelle)
-        onOffSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                isAlarmOn = isChecked; // Met à jour la variable locale
-                SharedPreferences.Editor editor = sharedPreferences.edit();
-                editor.putBoolean(PREF_ALARM_ON, isAlarmOn);
-                editor.apply();
-                updateSwitchText(); // Met à jour le texte du switch ("ON" ou "OFF")
-                Log.d(TAG, "Alarm state manually changed to: " + (isAlarmOn ? "ON" : "OFF"));
-                // MainActivity gèrera le démarrage/arrêt du service dans son onResume
-            }
+        // Listeners pour les Switches (sauvegarde immédiate de leur état)
+        highAlarmSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            saveSwitchState(PREF_IS_HIGH_ALARM_ON, isChecked);
+            updateSwitchText(highAlarmSwitch, isChecked);
+            Log.d(TAG, "High Alarm state changed to: " + (isChecked ? "ON" : "OFF"));
         });
 
+        lowAlarmSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            saveSwitchState(PREF_IS_LOW_ALARM_ON, isChecked);
+            updateSwitchText(lowAlarmSwitch, isChecked);
+            Log.d(TAG, "Low Alarm state changed to: " + (isChecked ? "ON" : "OFF"));
+        });
 
+        // Runnable pour afficher le prix actuel
         priceRunnable = new Runnable() {
             @Override
             public void run() {
                 fetchCurrentPrice();
-                // Utiliser la valeur lue (ou mise à jour) de l'intervalle
                 priceUpdateIntervalSeconds = sharedPreferences.getInt("refresh_interval", 5);
                 priceHandler.postDelayed(this, priceUpdateIntervalSeconds * 1000L);
             }
@@ -105,136 +102,113 @@ public class AlarmActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Relancer la boucle de récupération du prix actuel pour cet écran
         priceHandler.post(priceRunnable);
         Log.d(TAG, "Démarrage fetchCurrentPrice loop in onResume");
-        // Recharger l'état actuel au cas où il aurait changé
-        loadAlarm();
+        // Recharger au cas où l'état aurait été changé par le service
+        loadAlarmSettings();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        // Arrêter la boucle de récupération du prix actuel pour économiser les ressources
         priceHandler.removeCallbacks(priceRunnable);
         Log.d(TAG, "Arrêt fetchCurrentPrice loop in onPause");
     }
 
+    private void loadAlarmSettings() {
+        // Charger Alarme Haute
+        String highPriceStr = sharedPreferences.getString(PREF_HIGH_TRIGGER_PRICE, "");
+        boolean isHighOn = sharedPreferences.getBoolean(PREF_IS_HIGH_ALARM_ON, false);
+        highTriggerPriceEditText.setText(highPriceStr);
+        highAlarmSwitch.setChecked(isHighOn);
+        updateSwitchText(highAlarmSwitch, isHighOn);
 
-    // Charger l'alarme depuis SharedPreferences pour affichage
-    private void loadAlarm() {
-        // Lire l'état ON/OFF sauvegardé et mettre à jour le switch et son texte
-        isAlarmOn = sharedPreferences.getBoolean(PREF_ALARM_ON, false);
-        onOffSwitch.setChecked(isAlarmOn);
-        updateSwitchText();
+        // Charger Alarme Basse
+        String lowPriceStr = sharedPreferences.getString(PREF_LOW_TRIGGER_PRICE, "");
+        boolean isLowOn = sharedPreferences.getBoolean(PREF_IS_LOW_ALARM_ON, false);
+        lowTriggerPriceEditText.setText(lowPriceStr);
+        lowAlarmSwitch.setChecked(isLowOn);
+        updateSwitchText(lowAlarmSwitch, isLowOn);
 
-        // Charger et afficher le dernier prix de déclenchement sauvegardé, s'il existe
-        if (sharedPreferences.contains(PREF_TRIGGER_PRICE)) {
-            String triggerPriceStr = sharedPreferences.getString(PREF_TRIGGER_PRICE, "0.0");
+        Log.d(TAG, "Settings loaded: HighPrice=" + highPriceStr + ", HighOn=" + isHighOn +
+                ", LowPrice=" + lowPriceStr + ", LowOn=" + isLowOn);
+    }
+
+    // Sauvegarde uniquement l'état d'un switch
+    private void saveSwitchState(String key, boolean value) {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(key, value);
+        editor.apply();
+    }
+
+    // Sauvegarde les prix seuils entrés par l'utilisateur
+    private void saveAlarmSettings() {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        boolean settingsChanged = false;
+        boolean formatError = false;
+
+        // Sauvegarder Prix Haut
+        String highPriceStr = highTriggerPriceEditText.getText().toString();
+        if (!highPriceStr.isEmpty()) {
             try {
-                double triggerPrice = Double.parseDouble(triggerPriceStr);
-                triggerPriceEditText.setText(String.valueOf(triggerPrice));
-                // La variable 'isAbove' est interne à la logique de sauvegarde/déclenchement,
-                // pas besoin de la stocker ici comme état de l'activité.
-                boolean lastIsAbove = sharedPreferences.getBoolean(PREF_IS_ABOVE, false);
-                Log.d(TAG, "Alarm loaded: Trigger Price = " + triggerPrice + ", Last condition was Above = " + lastIsAbove + ", Alarm On = " + isAlarmOn);
+                Double.parseDouble(highPriceStr); // Just check format
+                editor.putString(PREF_HIGH_TRIGGER_PRICE, highPriceStr);
+                settingsChanged = true;
             } catch (NumberFormatException e) {
-                Log.e(TAG, "Error parsing loaded trigger price: " + triggerPriceStr, e);
-                triggerPriceEditText.setText(""); // Clear invalid value
+                highTriggerPriceEditText.setError("Invalid number format");
+                formatError = true;
             }
         } else {
-            Log.d(TAG, "No alarm saved found.");
-            triggerPriceEditText.setText(""); // Clear if no value saved
-        }
-    }
-
-    // Sauvegarder l'alarme dans SharedPreferences ET FORCER L'ACTIVATION
-    private void saveAlarm() {
-        String triggerPriceStr = triggerPriceEditText.getText().toString();
-        if (triggerPriceStr.isEmpty()) {
-            Toast.makeText(AlarmActivity.this, "Please enter a trigger price", Toast.LENGTH_SHORT).show();
-            return;
+            editor.remove(PREF_HIGH_TRIGGER_PRICE); // Remove if empty
+            settingsChanged = true; // Consider empty as a change if previously set
         }
 
-        // Récupérer crypto sélectionnée
-        String selectedCrypto = sharedPreferences.getString("crypto", "DOGEUSDT");
-
-        // Vérifier que l'API est initialisée
-        if (binanceApi == null) {
-            Log.e(TAG, "Binance API non initialisée !");
-            Toast.makeText(this, "API Error - Cannot save alarm", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Faire l'appel API pour obtenir le prix actuel afin de déterminer 'isAbove'
-        Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice(selectedCrypto);
-        call.enqueue(new Callback<BinancePriceResponse>() {
-            @Override
-            public void onResponse(Call<BinancePriceResponse> call, Response<BinancePriceResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    double currentPrice = response.body().getPrice();
-                    try {
-                        // Parser le prix cible entré par l'utilisateur
-                        double triggerPrice = Double.parseDouble(triggerPriceStr);
-
-                        // Déterminer la condition initiale 'isAbove'
-                        isAbove = currentPrice > triggerPrice;
-
-                        // Sauvegarder les informations dans SharedPreferences
-                        SharedPreferences.Editor editor = sharedPreferences.edit();
-                        editor.putString(PREF_TRIGGER_PRICE, String.valueOf(triggerPrice));
-                        editor.putBoolean(PREF_IS_ABOVE, isAbove);
-                        // --- MODIFICATION CLÉ ICI ---
-                        // Forcer l'état de l'alarme à ON lors de la sauvegarde
-                        editor.putBoolean(PREF_ALARM_ON, true);
-                        editor.apply(); // Appliquer les changements
-
-                        // Afficher confirmation
-                        Toast.makeText(AlarmActivity.this, "Alarm saved and activated", Toast.LENGTH_SHORT).show();
-                        Log.d(TAG, "Alarm saved: Trigger Price = " + triggerPrice + ", Current Price = " + currentPrice + " -> Condition initiale Is Above = " + isAbove + ". ALARM FORCED ON.");
-
-                        // --- MISE A JOUR UI ---
-                        // Mettre à jour le switch pour qu'il reflète l'état activé
-                        // Utiliser runOnUiThread pour garantir l'exécution sur le thread principal
-                        runOnUiThread(() -> {
-                            onOffSwitch.setChecked(true);
-                            updateSwitchText(); // Met à jour le texte du switch en "ON"
-                        });
-                        // MainActivity démarrera le service lors de son prochain onResume si ce n'est déjà fait
-
-                    } catch (NumberFormatException e) {
-                        Log.e(TAG, "Error parsing trigger price: " + triggerPriceStr, e);
-                        Toast.makeText(AlarmActivity.this, "Invalid trigger price format: " + triggerPriceStr, Toast.LENGTH_SHORT).show();
-                    }
-                } else {
-                    Log.e(TAG, "Échec sauvegarde alarme - Erreur API : " + response.code());
-                    Toast.makeText(AlarmActivity.this, "Failed to save alarm - API error: " + response.code(), Toast.LENGTH_SHORT).show();
-                }
+        // Sauvegarder Prix Bas
+        String lowPriceStr = lowTriggerPriceEditText.getText().toString();
+        if (!lowPriceStr.isEmpty()) {
+            try {
+                Double.parseDouble(lowPriceStr); // Just check format
+                editor.putString(PREF_LOW_TRIGGER_PRICE, lowPriceStr);
+                settingsChanged = true;
+            } catch (NumberFormatException e) {
+                lowTriggerPriceEditText.setError("Invalid number format");
+                formatError = true;
             }
+        } else {
+            editor.remove(PREF_LOW_TRIGGER_PRICE); // Remove if empty
+            settingsChanged = true;
+        }
 
-            @Override
-            public void onFailure(Call<BinancePriceResponse> call, Throwable t) {
-                Log.e(TAG, "Échec sauvegarde alarme - Requête API : " + t.getMessage(), t);
-                Toast.makeText(AlarmActivity.this, "Failed to save alarm - Network error", Toast.LENGTH_SHORT).show();
-            }
-        });
+        // Sauvegarder états des switches (déjà fait par les listeners, mais on re-sauvegarde ici pour être sûr)
+        editor.putBoolean(PREF_IS_HIGH_ALARM_ON, highAlarmSwitch.isChecked());
+        editor.putBoolean(PREF_IS_LOW_ALARM_ON, lowAlarmSwitch.isChecked());
+        settingsChanged = true; // Assume switch state might be part of the save action intent
+
+
+        if (!formatError) {
+            editor.apply();
+            Toast.makeText(this, "Alarm settings saved", Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "Alarm settings saved. HighPrice=" + highPriceStr + ", LowPrice=" + lowPriceStr +
+                    ", HighOn=" + highAlarmSwitch.isChecked() + ", LowOn=" + lowAlarmSwitch.isChecked());
+            // Clear errors if any
+            highTriggerPriceEditText.setError(null);
+            lowTriggerPriceEditText.setError(null);
+        } else {
+            Toast.makeText(this, "Please fix errors before saving", Toast.LENGTH_SHORT).show();
+        }
+        // MainActivity gérera le démarrage/arrêt du service dans son onResume en lisant ces nouvelles valeurs
     }
 
-
-    // Met à jour le texte du Switch ("ON" ou "OFF")
-    private void updateSwitchText() {
-        // Lire la valeur la plus récente depuis les prefs pour être sûr
-        boolean currentState = sharedPreferences.getBoolean(PREF_ALARM_ON, false);
-        onOffSwitch.setText(currentState ? "ON" : "OFF");
+    // Met à jour le texte du Switch donné ("ON" ou "OFF")
+    private void updateSwitchText(Switch targetSwitch, boolean isChecked) {
+        targetSwitch.setText(isChecked ? "ON" : "OFF");
     }
 
-
-    // Récupère et affiche le prix actuel
+    // Récupère et affiche le prix actuel (inchangé)
     private void fetchCurrentPrice() {
         if (binanceApi == null) {
             Log.w(TAG, "fetchCurrentPrice: Binance API non initialisée.");
             if (currentPriceTextView != null) {
-                // Utiliser runOnUiThread par sécurité pour les mises à jour UI
                 runOnUiThread(() -> currentPriceTextView.setText("API Error"));
             }
             return;
@@ -248,17 +222,15 @@ public class AlarmActivity extends AppCompatActivity {
             public void onResponse(Call<BinancePriceResponse> call, Response<BinancePriceResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     double currentPrice = response.body().getPrice();
-                    String symbol = response.body().getSymbol(); // Récupérer aussi le symbole
+                    String symbol = response.body().getSymbol();
                     if (currentPriceTextView != null) {
-                        // Mettre à jour le TextView sur le thread UI
                         runOnUiThread(() -> currentPriceTextView.setText(String.format(java.util.Locale.US, "%.2f", currentPrice)));
                         Log.d(TAG, "Current price updated: " + symbol + " = " + currentPrice);
                     }
                 } else {
                     Log.e(TAG, "fetchCurrentPrice - Erreur API : " + response.code());
                     if (currentPriceTextView != null) {
-                        // Mettre à jour le TextView sur le thread UI
-                        final int responseCode = response.code(); // Capturer pour lambda
+                        final int responseCode = response.code();
                         runOnUiThread(() -> currentPriceTextView.setText("API Err:" + responseCode));
                     }
                 }
@@ -268,12 +240,9 @@ public class AlarmActivity extends AppCompatActivity {
             public void onFailure(Call<BinancePriceResponse> call, Throwable t) {
                 Log.e(TAG, "fetchCurrentPrice - Échec requête API : " + t.getMessage());
                 if (currentPriceTextView != null) {
-                    // Mettre à jour le TextView sur le thread UI
                     runOnUiThread(() -> currentPriceTextView.setText("Network Err"));
                 }
             }
         });
     }
-
 }
-// ----- Fin Fichier : app/src/main/java/com/example/bitvibe/AlarmActivity.java -----

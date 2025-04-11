@@ -1,5 +1,3 @@
-
-
 package com.example.bitvibe;
 
 import static com.example.bitvibe.MainActivity.binanceApi;
@@ -20,8 +18,7 @@ import android.util.Log;
 import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
-import androidx.core.content.ContextCompat; // Ajout de cet import
-
+import androidx.core.content.ContextCompat;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -31,19 +28,24 @@ public class AlarmCheckService extends Service {
     private static final String TAG = "AlarmCheckService";
     private static final String CHANNEL_ID = "BitVibeAlarmChannel";
     private static final int NOTIFICATION_ID = 1;
-    private static final int ALARM_CHECK_INTERVAL = 10000;
+    private static final int ALARM_CHECK_INTERVAL = 10000; // Check every 10 seconds
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable runnable;
 
+    // Adresses MAC des bracelets
+    private static final String LEFT_BRACELET_MAC = "BC:57:29:13:FA:DE"; // Pour alarme HAUTE
+    private static final String RIGHT_BRACELET_MAC = "BC:57:29:13:FA:E0"; // Pour alarme BASSE
 
-    private static final String LEFT_BRACELET_MAC = "BC:57:29:13:FA:DE";
-    private static final String RIGHT_BRACELET_MAC = "BC:57:29:13:FA:E0";
-
-
+    // Préférences
     private static final String PREFS_NAME = "BitVibePrefs";
     private static final String PREF_NOTIFICATION_TYPE = "notification_type";
-    private static final int DEFAULT_NOTIFICATION_TYPE = 6;
+    private static final int DEFAULT_NOTIFICATION_TYPE = 6; // LED + VIB par défaut
 
+    // Nouvelles clés de préférences pour les deux alarmes
+    private static final String PREF_HIGH_TRIGGER_PRICE = "high_trigger_price";
+    private static final String PREF_IS_HIGH_ALARM_ON = "is_high_alarm_on";
+    private static final String PREF_LOW_TRIGGER_PRICE = "low_trigger_price";
+    private static final String PREF_IS_LOW_ALARM_ON = "is_low_alarm_on";
 
     @Override
     public void onCreate() {
@@ -59,7 +61,7 @@ public class AlarmCheckService extends Service {
         runnable = new Runnable() {
             @Override
             public void run() {
-                checkAlarm();
+                checkAlarms(); // Renommé pour refléter les deux alarmes
                 handler.postDelayed(this, ALARM_CHECK_INTERVAL);
             }
         };
@@ -82,9 +84,9 @@ public class AlarmCheckService extends Service {
         return null;
     }
 
-    private void checkAlarm() {
+    private void checkAlarms() { // Renommé
         if (binanceApi == null) {
-            Log.e(TAG, "checkAlarm: binanceApi is null. Cannot check price.");
+            Log.e(TAG, "checkAlarms: binanceApi is null.");
             return;
         }
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -96,7 +98,7 @@ public class AlarmCheckService extends Service {
             public void onResponse(Call<BinancePriceResponse> call, Response<BinancePriceResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     double currentPrice = response.body().getPrice();
-                    comparePriceWithAlarm(currentPrice);
+                    evaluateAlarmConditions(currentPrice, prefs); // Nouvelle méthode pour clarté
                 } else {
                     Log.e(TAG, "Erreur API lors de la récupération du prix: " + response.code());
                 }
@@ -109,73 +111,63 @@ public class AlarmCheckService extends Service {
         });
     }
 
-    private void comparePriceWithAlarm(double currentPrice) {
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
+    private void evaluateAlarmConditions(double currentPrice, SharedPreferences prefs) {
+        boolean highAlarmTriggered = false;
+        boolean lowAlarmTriggered = false;
 
-        if (isAlarmOn) {
-            if (prefs.contains("trigger_price") && prefs.contains("is_above")) {
-                double triggerPrice = 0.0;
-                try {
-                    triggerPrice = Double.parseDouble(prefs.getString("trigger_price", "0.0"));
-                } catch (NumberFormatException e) {
-                    Log.e(TAG, "Erreur de parsing du trigger_price depuis SharedPreferences", e);
-                    return;
+        // Lire les préférences pour les deux alarmes
+        boolean isHighAlarmOn = prefs.getBoolean(PREF_IS_HIGH_ALARM_ON, false);
+        String highPriceStr = prefs.getString(PREF_HIGH_TRIGGER_PRICE, "");
+        boolean isLowAlarmOn = prefs.getBoolean(PREF_IS_LOW_ALARM_ON, false);
+        String lowPriceStr = prefs.getString(PREF_LOW_TRIGGER_PRICE, "");
+        int selectedNotificationType = prefs.getInt(PREF_NOTIFICATION_TYPE, DEFAULT_NOTIFICATION_TYPE);
+
+        SharedPreferences.Editor editor = prefs.edit(); // Préparer pour éditer si une alarme se déclenche
+
+        // --- Vérification Alarme Haute ---
+        if (isHighAlarmOn && !highPriceStr.isEmpty()) {
+            try {
+                double highTriggerPrice = Double.parseDouble(highPriceStr);
+                if (currentPrice > highTriggerPrice) {
+                    Log.d(TAG, "HIGH ALARM TRIGGERED! Price=" + currentPrice + " > Threshold=" + highTriggerPrice);
+                    sendBraceletNotification(LEFT_BRACELET_MAC, selectedNotificationType);
+                    showToastNotification("High Alarm: Price above " + highTriggerPrice);
+                    editor.putBoolean(PREF_IS_HIGH_ALARM_ON, false); // Désactiver l'alarme haute
+                    highAlarmTriggered = true;
                 }
-
-                boolean wasAboveWhenSet = prefs.getBoolean("is_above", false);
-
-                Log.d(TAG, "Vérification: Prix Actuel=" + currentPrice + ", Seuil=" + triggerPrice + ", Était Au-dessus Lors du Set=" + wasAboveWhenSet);
-
-                String targetMacAddress = null;
-                String triggerReason = "";
-
-
-                if (!wasAboveWhenSet && currentPrice >= triggerPrice) {
-                    Log.d(TAG, "ALARM TRIGGERED! Condition: Montée au-dessus du seuil.");
-                    targetMacAddress = LEFT_BRACELET_MAC;
-                    triggerReason = "Hausse du prix au-dessus de " + triggerPrice;
-                }
-
-                else if (wasAboveWhenSet && currentPrice <= triggerPrice) {
-                    Log.d(TAG, "ALARM TRIGGERED! Condition: Descente en dessous du seuil.");
-                    targetMacAddress = RIGHT_BRACELET_MAC;
-                    triggerReason = "Baisse du prix en dessous de " + triggerPrice;
-                } else {
-                    Log.d(TAG, "Condition d'alarme non remplie.");
-                }
-
-
-                if (targetMacAddress != null) {
-
-                    int selectedNotificationType = prefs.getInt(PREF_NOTIFICATION_TYPE, DEFAULT_NOTIFICATION_TYPE);
-                    Log.d(TAG, "Type de notification choisi: " + selectedNotificationType);
-
-
-                    sendBraceletNotification(targetMacAddress, selectedNotificationType);
-
-
-                    final String finalTriggerReason = triggerReason;
-                    new Handler(Looper.getMainLooper()).post(() -> {
-                        Toast.makeText(getApplicationContext(), "ALARM TRIGGERED!\n" + finalTriggerReason, Toast.LENGTH_LONG).show();
-                    });
-
-
-                    SharedPreferences.Editor editor = prefs.edit();
-                    editor.putBoolean("is_alarm_on", false);
-                    editor.apply();
-                    Log.d(TAG, "Alarme désactivée après déclenchement pour MAC: " + targetMacAddress);
-
-
-                }
-            } else {
-                Log.w(TAG, "Vérification ignorée: trigger_price ou is_above manquant dans SharedPreferences.");
+            } catch (NumberFormatException e) {
+                Log.e(TAG, "Error parsing high trigger price: " + highPriceStr, e);
+                editor.putBoolean(PREF_IS_HIGH_ALARM_ON, false); // Désactiver si prix invalide
+                highAlarmTriggered = true; // Marquer comme changé pour appliquer l'éditeur
             }
-        } else {
-            Log.d(TAG, "Vérification ignorée: Alarme désactivée (is_alarm_on=false).");
+        }
+
+        // --- Vérification Alarme Basse ---
+        // Vérifier même si l'alarme haute s'est déclenchée (elles sont indépendantes)
+        if (isLowAlarmOn && !lowPriceStr.isEmpty()) {
+            try {
+                double lowTriggerPrice = Double.parseDouble(lowPriceStr);
+                if (currentPrice < lowTriggerPrice) {
+                    Log.d(TAG, "LOW ALARM TRIGGERED! Price=" + currentPrice + " < Threshold=" + lowTriggerPrice);
+                    sendBraceletNotification(RIGHT_BRACELET_MAC, selectedNotificationType);
+                    showToastNotification("Low Alarm: Price below " + lowTriggerPrice);
+                    editor.putBoolean(PREF_IS_LOW_ALARM_ON, false); // Désactiver l'alarme basse
+                    lowAlarmTriggered = true;
+                }
+            } catch (NumberFormatException e) {
+                Log.e(TAG, "Error parsing low trigger price: " + lowPriceStr, e);
+                editor.putBoolean(PREF_IS_LOW_ALARM_ON, false); // Désactiver si prix invalide
+                lowAlarmTriggered = true; // Marquer comme changé pour appliquer l'éditeur
+            }
+        }
+
+        // Appliquer les changements aux préférences si une alarme a été désactivée
+        if (highAlarmTriggered || lowAlarmTriggered) {
+            editor.apply();
+            Log.d(TAG, "Alarm states updated in preferences after trigger.");
+            // Informer l'UI (Activity) du changement d'état si nécessaire via Broadcast etc.
         }
     }
-
 
     private void sendBraceletNotification(String macAddress, int ringType) {
         if (macAddress == null || macAddress.isEmpty()) {
@@ -189,23 +181,25 @@ public class AlarmCheckService extends Service {
         intent.putExtra(BluetoothConnectionService.EXTRA_RING_TYPE, ringType);
 
         try {
-
             startService(intent);
-            Log.d(TAG, "Intent envoyé pour faire sonner/vibrer le bracelet " + macAddress + " (Type: " + ringType + ")");
+            Log.d(TAG, "Intent envoyé pour notifier bracelet " + macAddress + " (Type: " + ringType + ")");
         } catch (IllegalStateException e) {
-
-            Log.e(TAG, "Erreur (IllegalStateException) lors du démarrage du service pour bracelet " + macAddress + ". Le service BT tourne-t-il en foreground?", e);
-
+            Log.e(TAG, "Erreur (IllegalStateException) lors du démarrage du service BT pour " + macAddress, e);
             try {
                 ContextCompat.startForegroundService(this, intent);
-                Log.d(TAG, "Tentative de démarrage en foreground du service pour bracelet " + macAddress);
+                Log.d(TAG, "Tentative de démarrage en foreground du service BT pour " + macAddress);
             } catch (Exception e2) {
-                Log.e(TAG, "Échec de la tentative de démarrage en foreground du service pour bracelet " + macAddress, e2);
+                Log.e(TAG, "Échec de la tentative de démarrage en foreground pour " + macAddress, e2);
             }
-
         } catch (Exception e) {
-            Log.e(TAG, "Erreur générale lors du démarrage du service pour bracelet " + macAddress, e);
+            Log.e(TAG, "Erreur générale lors du démarrage du service BT pour " + macAddress, e);
         }
+    }
+
+    private void showToastNotification(final String message) {
+        new Handler(Looper.getMainLooper()).post(() -> {
+            Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show();
+        });
     }
 
 
@@ -216,8 +210,8 @@ public class AlarmCheckService extends Service {
                 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("BitVibe Alarme Active")
-                .setContentText("Surveillance du prix de la cryptomonnaie...")
+                .setContentTitle("BitVibe Alarms Active") // Titre mis à jour
+                .setContentText("Monitoring cryptocurrency price...")
                 .setSmallIcon(R.drawable.logo)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true);
@@ -228,7 +222,7 @@ public class AlarmCheckService extends Service {
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             CharSequence name = "BitVibe Alarm Channel";
-            String description = "Notifications pour les alarmes de prix BitVibe";
+            String description = "Notifications for BitVibe price alarms";
             int importance = NotificationManager.IMPORTANCE_LOW;
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
             channel.setDescription(description);
@@ -237,7 +231,7 @@ public class AlarmCheckService extends Service {
             if (notificationManager != null) {
                 notificationManager.createNotificationChannel(channel);
             } else {
-                Log.e(TAG, "Impossible d'obtenir NotificationManager pour créer le canal.");
+                Log.e(TAG, "Cannot get NotificationManager to create channel.");
             }
         }
     }
