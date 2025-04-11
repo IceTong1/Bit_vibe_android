@@ -47,7 +47,6 @@ public class MainActivity extends AppCompatActivity {
     private TextView bitcoinPriceTextView;
     private TextView statusBraceletLeftTextView;
     private TextView statusBraceletRightTextView;
-
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable runnable;
     private double lastPrice = -1;
@@ -56,15 +55,18 @@ public class MainActivity extends AppCompatActivity {
     private static boolean isServiceRunning = false;
     private SharedPreferences prefs;
 
+    // --- Constantes pour les Bracelets et Vibration ---
+    private static final String LEFT_BRACELET_MAC = "BC:57:29:13:FA:DE";
+    private static final String RIGHT_BRACELET_MAC = "BC:57:29:13:FA:E0";
+    // Ajout de la constante pour la vibration (basée sur BraceletConnectActivity)
+    private static final int RING_TYPE_VIBRATE = 4; // Ajouté pour la vibration
+
     // --- Variables pour le Service Bluetooth ---
     private BluetoothConnectionService mBluetoothService;
     private boolean mBound = false;
     private KBConnState mLeftBraceletState = KBConnState.Disconnected;
     private KBConnState mRightBraceletState = KBConnState.Disconnected;
 
-
-    private static final String LEFT_BRACELET_MAC = "BC:57:29:13:FA:DE";
-    private static final String RIGHT_BRACELET_MAC = "BC:57:29:13:FA:E0";
 
     // --- ServiceConnection pour BluetoothConnectionService ---
     private final ServiceConnection mBluetoothConnection = new ServiceConnection() {
@@ -100,8 +102,6 @@ public class MainActivity extends AppCompatActivity {
 
 
                 Log.d(TAG, "MainActivity: Broadcast reçu pour " + mac + " -> " + state);
-
-
                 boolean stateChanged = false;
                 if (LEFT_BRACELET_MAC.equalsIgnoreCase(mac)) {
                     if (mLeftBraceletState != state) {
@@ -122,15 +122,12 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         // --- Initialisation UI ---
         bitcoinPriceTextView = findViewById(R.id.bitcoinPriceTextView);
-
         try {
             statusBraceletLeftTextView = findViewById(R.id.status_bracelet_left);
             statusBraceletRightTextView = findViewById(R.id.status_bracelet_right);
@@ -242,6 +239,67 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    // --- MÉTHODE MODIFIÉE ---
+    private void fetchBitcoinPrice() {
+        if (binanceApi == null) return;
+        String selectedCrypto = prefs.getString("crypto", "DOGEUSDT"); // Default to DOGEUSDT if not set
+        Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice(selectedCrypto); // Pass the symbol to the API call
+
+        call.enqueue(new Callback<BinancePriceResponse>() {
+            @Override
+            public void onResponse(@NonNull Call<BinancePriceResponse> call, @NonNull Response<BinancePriceResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    double currentPrice = response.body().getPrice();
+                    String symbol = response.body().getSymbol();
+                    Log.d(TAG, symbol + " : currentPrice = " + currentPrice + ", lastPrice = " + lastPrice);
+                    if (bitcoinPriceTextView != null) {
+                        bitcoinPriceTextView.setText(String.format(symbol + " : %.2f", currentPrice)); // Affichage formaté
+                    }
+                    float tolerancePercentage = prefs.getFloat("tolerance_percentage", 0.01f);
+                    if (lastPrice != -1) {
+                        double percentageChange = ((currentPrice - lastPrice) / lastPrice) * 100;
+                        if (Math.abs(percentageChange) > tolerancePercentage) {
+                            // --- IMPLÉMENTATION DES TODOS ---
+                            if (mBound && mBluetoothService != null) { // Vérifier si le service est lié
+                                if (percentageChange > 0) {
+                                    // Hausse -> faire vibrer le bracelet droit
+                                    Log.d(TAG, "Déclenchement vibration (Hausse) sur bracelet DROIT");
+                                    mBluetoothService.ringBeacon(RIGHT_BRACELET_MAC, RING_TYPE_VIBRATE);
+                                } else {
+                                    // Baisse -> faire vibrer le bracelet gauche
+                                    Log.d(TAG, "Déclenchement vibration (Baisse) sur bracelet GAUCHE");
+                                    mBluetoothService.ringBeacon(LEFT_BRACELET_MAC, RING_TYPE_VIBRATE);
+                                }
+                            } else {
+                                Log.w(TAG, "Service Bluetooth non lié, impossible de faire vibrer les bracelets.");
+                            }
+                            // --- FIN IMPLÉMENTATION ---
+
+                            Log.d(TAG, (percentageChange > 0 ? "Hausse" : "Baisse") + " détectée (" + String.format(java.util.Locale.US, "%.2f", percentageChange) + "%)");
+                            lastPrice = currentPrice; // Mettre à jour lastPrice SEULEMENT si changement significatif détecté
+                        } else {
+                            Log.d(TAG, "Prix stable (" + String.format(java.util.Locale.US, "%.2f", percentageChange) + "%)");
+                            // Optionnel: Mettre à jour lastPrice même si stable
+                            // lastPrice = currentPrice;
+                        }
+                    } else {
+                        lastPrice = currentPrice; // Initialiser lastPrice la première fois
+                    }
+                } else {
+                    Log.e(TAG, "Erreur API : " + response.code());
+                    if (bitcoinPriceTextView != null) bitcoinPriceTextView.setText("Erreur API : " + response.code());
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<BinancePriceResponse> call, @NonNull Throwable t) {
+                Log.e(TAG, "Échec requête API : " + t.getMessage(), t);
+                if (bitcoinPriceTextView != null) bitcoinPriceTextView.setText("Échec connexion API");
+            }
+        });
+    }
+    // --- FIN DE LA MÉTHODE MODIFIÉE ---
+
 
     private void initializeDefaultPrefs() {
         SharedPreferences.Editor editor = prefs.edit();
@@ -274,13 +332,11 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);
         });
-
         Button braceletConnectButton = findViewById(R.id.braceletConnectButton);
         braceletConnectButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, BraceletConnectActivity.class);
             startActivity(intent);
         });
-
         Button alarmButton = findViewById(R.id.alarmButton);
         alarmButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, AlarmActivity.class);
@@ -333,57 +389,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
-
-
-    private void fetchBitcoinPrice() {
-        if (binanceApi == null) return;
-        String selectedCrypto = prefs.getString("crypto", "DOGEUSDT"); // Default to DOGEUSDT if not set
-        Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice(selectedCrypto); // Pass the symbol to the API call
-
-        call.enqueue(new Callback<BinancePriceResponse>() {
-            @Override
-            public void onResponse(@NonNull Call<BinancePriceResponse> call, @NonNull Response<BinancePriceResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    double currentPrice = response.body().getPrice();
-                    String symbol = response.body().getSymbol();
-                    Log.d(TAG, symbol + " : currentPrice = " + currentPrice + ", lastPrice = " + lastPrice);
-                    if (bitcoinPriceTextView != null) {
-                        bitcoinPriceTextView.setText(String.format(symbol + " : " + currentPrice));
-                    }
-                    float tolerancePercentage = prefs.getFloat("tolerance_percentage", 0.01f);
-                    if (lastPrice != -1) {
-                        double percentageChange = ((currentPrice - lastPrice) / lastPrice) * 100;
-                        if (Math.abs(percentageChange) > tolerancePercentage) {
-                            /*
-                            if(percentageChange > 0){
-                                //TODO : faire vibrer le bracelet droit
-                            }else{
-                                //TODO : faire vibrer le bracelet gauche
-                            }
-                            */
-                            Log.d(TAG, (percentageChange > 0 ? "Hausse" : "Baisse") + " détectée (" + String.format(java.util.Locale.US, "%.2f", percentageChange) + "%)");
-                            lastPrice = currentPrice;
-                        } else {
-                            Log.d(TAG, "Prix stable (" + String.format(java.util.Locale.US, "%.2f", percentageChange) + "%)");
-                        }
-                    } else {
-                        lastPrice = currentPrice;
-                    }
-                } else {
-                    Log.e(TAG, "Erreur API : " + response.code());
-                    if (bitcoinPriceTextView != null) bitcoinPriceTextView.setText("Erreur API : " + response.code());
-                }
-            }
-
-            @Override
-            public void onFailure(@NonNull Call<BinancePriceResponse> call, @NonNull Throwable t) {
-                Log.e(TAG, "Échec requête API : " + t.getMessage(), t);
-                if (bitcoinPriceTextView != null) bitcoinPriceTextView.setText("Échec connexion API");
-            }
-        });
-    }
-
     private void manageAlarmCheckService() {
         boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
         Intent serviceIntent = new Intent(this, AlarmCheckService.class);
@@ -426,7 +431,6 @@ public class MainActivity extends AppCompatActivity {
             updateIndividualStatusTextViews();
         } else {
             Log.w(TAG, "Impossible de mettre à jour l'UI, service non lié");
-
             mLeftBraceletState = KBConnState.Disconnected;
             mRightBraceletState = KBConnState.Disconnected;
             updateIndividualStatusTextViews();
@@ -476,4 +480,4 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-}
+} // Fin de la classe MainActivity
