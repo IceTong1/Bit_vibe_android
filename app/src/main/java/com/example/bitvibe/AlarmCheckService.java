@@ -1,4 +1,4 @@
-// ----- Fichier : app/src/main/java/com/example/bitvibe/AlarmCheckService.java -----
+
 
 package com.example.bitvibe;
 
@@ -21,7 +21,7 @@ import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager; // Ajout de l'import
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -47,10 +47,10 @@ public class AlarmCheckService extends Service {
     private static final String PREF_LOW_TRIGGER_PRICE = "low_trigger_price";
     private static final String PREF_IS_LOW_ALARM_ON = "is_low_alarm_on";
 
-    // --- AJOUT : Actions pour les Broadcasts Locaux ---
+
     public static final String ACTION_ALARM_STATE_CHANGED = "com.example.bitvibe.ALARM_STATE_CHANGED";
-    public static final String EXTRA_ALARM_TYPE = "com.example.bitvibe.EXTRA_ALARM_TYPE"; // "high" or "low"
-    public static final String EXTRA_ALARM_STATE = "com.example.bitvibe.EXTRA_ALARM_STATE"; // boolean (false dans ce cas)
+    public static final String EXTRA_ALARM_TYPE = "com.example.bitvibe.EXTRA_ALARM_TYPE";
+    public static final String EXTRA_ALARM_STATE = "com.example.bitvibe.EXTRA_ALARM_STATE";
 
 
     @Override
@@ -129,7 +129,7 @@ public class AlarmCheckService extends Service {
 
         SharedPreferences.Editor editor = prefs.edit();
 
-        // --- Vérification Alarme Haute ---
+
         if (isHighAlarmOn && !highPriceStr.isEmpty()) {
             try {
                 double highTriggerPrice = Double.parseDouble(highPriceStr);
@@ -146,11 +146,10 @@ public class AlarmCheckService extends Service {
                 Log.e(TAG, "Error parsing high trigger price: " + highPriceStr, e);
                 editor.putBoolean(PREF_IS_HIGH_ALARM_ON, false);
                 highAlarmTriggered = true;
-                sendAlarmStateBroadcast("high", false); // Envoyer aussi en cas d'erreur de prix
+                sendAlarmStateBroadcast("high", false);
             }
         }
 
-        // --- Vérification Alarme Basse ---
         if (isLowAlarmOn && !lowPriceStr.isEmpty()) {
             try {
                 double lowTriggerPrice = Double.parseDouble(lowPriceStr);
@@ -160,7 +159,7 @@ public class AlarmCheckService extends Service {
                     showToastNotification("Low Alarm: Price below " + lowTriggerPrice);
                     editor.putBoolean(PREF_IS_LOW_ALARM_ON, false);
                     lowAlarmTriggered = true;
-                    // --- AJOUT : Envoyer broadcast ---
+
                     sendAlarmStateBroadcast("low", false);
                 }
             } catch (NumberFormatException e) {
@@ -177,7 +176,6 @@ public class AlarmCheckService extends Service {
         }
     }
 
-    // --- AJOUT : Méthode pour envoyer le broadcast local ---
     private void sendAlarmStateBroadcast(String alarmType, boolean newState) {
         Intent intent = new Intent(ACTION_ALARM_STATE_CHANGED);
         intent.putExtra(EXTRA_ALARM_TYPE, alarmType);
@@ -250,4 +248,3 @@ public class AlarmCheckService extends Service {
         }
     }
 }
-// ----- Fin Fichier : app/src/main/java/com/example/bitvibe/AlarmCheckService.java -----

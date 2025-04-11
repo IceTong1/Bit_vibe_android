@@ -1,13 +1,13 @@
-// ----- Fichier : app/src/main/java/com/example/bitvibe/AlarmActivity.java -----
+
 
 package com.example.bitvibe;
 
 import static com.example.bitvibe.MainActivity.binanceApi;
 
-import android.content.BroadcastReceiver; // Ajout import
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter; // Ajout import
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
@@ -23,7 +23,7 @@ import android.widget.Toast;
 import androidx.activity.OnBackPressedDispatcher;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager; // Ajout import
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 
 import retrofit2.Call;
@@ -52,7 +52,7 @@ public class AlarmActivity extends AppCompatActivity {
     private Runnable priceRunnable;
     private int priceUpdateIntervalSeconds = 5;
 
-    // --- AJOUT : BroadcastReceiver ---
+
     private BroadcastReceiver alarmStateReceiver;
 
     @Override
@@ -60,7 +60,7 @@ public class AlarmActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_alarm);
 
-        setTitle(getString(R.string.title_activity_alarm)); // Assurez-vous que la string est correcte
+        setTitle(getString(R.string.title_activity_alarm));
 
         Button backButton = findViewById(R.id.mainActivityButton);
         backButton.setOnClickListener(v -> {
@@ -106,7 +106,6 @@ public class AlarmActivity extends AppCompatActivity {
             }
         };
 
-        // --- AJOUT : Initialisation du Receiver ---
         setupAlarmStateReceiver();
     }
 
@@ -117,7 +116,6 @@ public class AlarmActivity extends AppCompatActivity {
         Log.d(TAG, "Démarrage fetchCurrentPrice loop in onResume");
         loadAlarmSettings();
         manageAlarmCheckService();
-        // --- AJOUT : Enregistrer le Receiver ---
         LocalBroadcastManager.getInstance(this).registerReceiver(alarmStateReceiver,
                 new IntentFilter(AlarmCheckService.ACTION_ALARM_STATE_CHANGED));
         Log.d(TAG, "Alarm state receiver registered");
@@ -128,12 +126,12 @@ public class AlarmActivity extends AppCompatActivity {
         super.onPause();
         priceHandler.removeCallbacks(priceRunnable);
         Log.d(TAG, "Arrêt fetchCurrentPrice loop in onPause");
-        // --- AJOUT : Désenregistrer le Receiver ---
+
         LocalBroadcastManager.getInstance(this).unregisterReceiver(alarmStateReceiver);
         Log.d(TAG, "Alarm state receiver unregistered");
     }
 
-    // --- AJOUT : Méthode pour configurer le BroadcastReceiver ---
+
     private void setupAlarmStateReceiver() {
         alarmStateReceiver = new BroadcastReceiver() {
             @Override
@@ -144,13 +142,13 @@ public class AlarmActivity extends AppCompatActivity {
 
                     Log.d(TAG, "Received broadcast: Alarm " + alarmType + " state changed to " + newState);
 
-                    // Mettre à jour l'UI sur le thread principal
+
                     runOnUiThread(() -> {
-                        if ("high".equals(alarmType) && !newState) { // Vérifier si l'état est bien 'false' (désactivé)
+                        if ("high".equals(alarmType) && !newState) {
                             highAlarmSwitch.setChecked(false);
                             updateSwitchText(highAlarmSwitch, false);
                             Toast.makeText(AlarmActivity.this, "High alarm was triggered and disabled.", Toast.LENGTH_SHORT).show();
-                        } else if ("low".equals(alarmType) && !newState) { // Vérifier si l'état est bien 'false' (désactivé)
+                        } else if ("low".equals(alarmType) && !newState) {
                             lowAlarmSwitch.setChecked(false);
                             updateSwitchText(lowAlarmSwitch, false);
                             Toast.makeText(AlarmActivity.this, "Low alarm was triggered and disabled.", Toast.LENGTH_SHORT).show();
@@ -272,8 +270,7 @@ public class AlarmActivity extends AppCompatActivity {
                     String symbol = response.body().getSymbol();
                     if (currentPriceTextView != null) {
                         runOnUiThread(() -> currentPriceTextView.setText(String.format(java.util.Locale.US, "%.2f", currentPrice)));
-                        // Log déplacé pour éviter le spam si l'activité est au premier plan longtemps
-                        // Log.d(TAG, "Current price updated: " + symbol + " = " + currentPrice);
+
                     }
                 } else {
                     Log.e(TAG, "fetchCurrentPrice - Erreur API : " + response.code());
@@ -311,4 +308,3 @@ public class AlarmActivity extends AppCompatActivity {
         }
     }
 }
-// ----- Fin Fichier : app/src/main/java/com/example/bitvibe/AlarmActivity.java -----
