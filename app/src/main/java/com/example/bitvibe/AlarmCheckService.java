@@ -8,7 +8,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
-import android.content.Intent;
+import android.content.Intent; // Ajout de l'import Intent
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Handler;
@@ -24,21 +24,25 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 public class AlarmCheckService extends Service {
-    private static final String TAG = "AlarmCheckService"; // Tag for logging
+    private static final String TAG = "AlarmCheckService";
     private static final String CHANNEL_ID = "BitVibeAlarmChannel";
     private static final int NOTIFICATION_ID = 1;
-    private static final int ALARM_CHECK_INTERVAL = 10000; // Check every 10 seconds (adjust as needed)
+    private static final int ALARM_CHECK_INTERVAL = 10000; // Check every 10 seconds
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable runnable;
 
-    // this function is called when the service is created
+    // --- Constantes pour les Bracelets et Vibration --- AJOUTÉES ---
+    private static final String LEFT_BRACELET_MAC = "BC:57:29:13:FA:DE";
+    private static final String RIGHT_BRACELET_MAC = "BC:57:29:13:FA:E0";
+    private static final int RING_TYPE_VIBRATE = 4; // Type pour la vibration
+    // --- FIN AJOUTS CONSTANTES ---
+
     @Override
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "Service created");
     }
 
-    // this function is called when the service is started
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "Service started");
@@ -57,7 +61,6 @@ public class AlarmCheckService extends Service {
         return START_NOT_STICKY;
     }
 
-    // this function is called when the service is destroyed
     @Override
     public void onDestroy() {
         super.onDestroy();
@@ -67,42 +70,34 @@ public class AlarmCheckService extends Service {
         }
     }
 
-    /**
-     * This service does not support client binding.
-     * This method is called when a client attempts to bind to the service,
-     * but since this is a started, unbound service, we return null.
-     * This indicates that there is no communication channel available for clients.
-     */    @Override
+    @Override
     public IBinder onBind(Intent intent) {
+        // Ce service ne supporte pas le binding
         return null;
     }
 
     // Method to check the alarm
     private void checkAlarm() {
-        // Crée une requête pour obtenir le prix
-        // Retrieve the selected cryptocurrency symbol from SharedPreferences
         SharedPreferences prefs = getSharedPreferences("BitVibePrefs", Context.MODE_PRIVATE);
         String selectedCrypto = prefs.getString("crypto", "DOGEUSDT"); // Default to DOGEUSDT if not set
-        Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice(selectedCrypto); // Pass the symbol to the API call
-        // Exécute la requête de manière asynchrone
+        Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice(selectedCrypto);
+
         call.enqueue(new Callback<BinancePriceResponse>() {
             @Override
             public void onResponse(Call<BinancePriceResponse> call, Response<BinancePriceResponse> response) {
-                // Vérifie si la réponse est valide
                 if (response.isSuccessful() && response.body() != null) {
-                    double currentPrice = response.body().getPrice(); // Récupère le prix actuel
+                    double currentPrice = response.body().getPrice();
                     comparePriceWithAlarm(currentPrice);
-                } else { // En cas d'erreur dans la réponse
+                } else {
                     Log.e(TAG, "Erreur API : " + response.code());
                 }
             }
 
             @Override
-            public void onFailure(Call<BinancePriceResponse> call, Throwable t) { // En cas d'échec réseau ou autre problème
-                Log.e(TAG, "Échec de la requête API : " + t.getMessage(), t); // Logger l'exception complète est utile
+            public void onFailure(Call<BinancePriceResponse> call, Throwable t) {
+                Log.e(TAG, "Échec de la requête API : " + t.getMessage(), t);
             }
         });
-
     }
 
     // Method to compare the current price with the alarm settings
@@ -119,7 +114,7 @@ public class AlarmCheckService extends Service {
                 if ((!isAbove && currentPrice >= triggerPrice) || (isAbove && currentPrice <= triggerPrice)) {
                     // Trigger alarm!
                     Log.d(TAG, "ALARM TRIGGERED!");
-                    triggerAlarm();
+                    triggerAlarm(); // Appel de la méthode modifiée
 
                 } else {
                     Log.d(TAG, "Not Triggered !");
@@ -128,9 +123,38 @@ public class AlarmCheckService extends Service {
         }
     }
 
-    // Method to trigger the alarm (show a Toast)
+    // Method to trigger the alarm (show a Toast and vibrate bracelets)
     private void triggerAlarm() {
-         // TODO : Faire vibrer les deux bracelets
+        Log.d(TAG, "Déclenchement de l'alarme et des vibrations...");
+
+        // --- VIBRATION BRACELET GAUCHE ---
+        Intent intentLeft = new Intent(this, BluetoothConnectionService.class);
+        intentLeft.setAction(BluetoothConnectionService.ACTION_RING_DEVICE);
+        intentLeft.putExtra(BluetoothConnectionService.EXTRA_MAC_ADDRESS, LEFT_BRACELET_MAC);
+        intentLeft.putExtra(BluetoothConnectionService.EXTRA_RING_TYPE, RING_TYPE_VIBRATE);
+        try {
+            startService(intentLeft);
+            Log.d(TAG, "Intent envoyé pour faire vibrer le bracelet GAUCHE.");
+        } catch (Exception e) {
+            Log.e(TAG, "Erreur lors du démarrage du service pour bracelet GAUCHE", e);
+        }
+
+        // Petite pause pour éviter de surcharger le service ou le BT (optionnel mais peut aider)
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            Intent intentRight = new Intent(this, BluetoothConnectionService.class);
+            intentRight.setAction(BluetoothConnectionService.ACTION_RING_DEVICE);
+            intentRight.putExtra(BluetoothConnectionService.EXTRA_MAC_ADDRESS, RIGHT_BRACELET_MAC);
+            intentRight.putExtra(BluetoothConnectionService.EXTRA_RING_TYPE, RING_TYPE_VIBRATE);
+            try {
+                startService(intentRight);
+                Log.d(TAG, "Intent envoyé pour faire vibrer le bracelet DROIT.");
+            } catch (Exception e) {
+                Log.e(TAG, "Erreur lors du démarrage du service pour bracelet DROIT", e);
+            }
+        }, 100); // Délai de 100ms entre les deux commandes
+
+        // --- AFFICHAGE DU TOAST ---
+        // Utiliser le Handler pour afficher le Toast sur le thread UI
         new Handler(Looper.getMainLooper()).post(() -> {
             Toast.makeText(getApplicationContext(), "PRICE ALARM TRIGGERED!", Toast.LENGTH_LONG).show();
         });
@@ -139,17 +163,14 @@ public class AlarmCheckService extends Service {
     // Method to create the notification for the foreground service
     private Notification createNotification() {
         createNotificationChannel();
-
         Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this,
                 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE);
-
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("BitVibe Alarm Service")
                 .setContentText("Checking for price alarm...")
                 .setSmallIcon(R.drawable.logo)
                 .setContentIntent(pendingIntent);
-
         return builder.build();
     }
 

@@ -239,7 +239,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    // --- MÉTHODE MODIFIÉE ---
+
     private void fetchBitcoinPrice() {
         if (binanceApi == null) return;
         String selectedCrypto = prefs.getString("crypto", "DOGEUSDT"); // Default to DOGEUSDT if not set
@@ -298,7 +298,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-    // --- FIN DE LA MÉTHODE MODIFIÉE ---
+
 
 
     private void initializeDefaultPrefs() {
