@@ -1,4 +1,3 @@
-
 package com.example.bitvibe;
 
 import static com.example.bitvibe.MainActivity.binanceApi;
@@ -45,6 +44,7 @@ public class AlarmActivity extends AppCompatActivity {
     private Switch highAlarmSwitch;
     private Switch lowAlarmSwitch;
     private TextView currentPriceTextView;
+    private TextView currentCryptoSymbolTextView;
     private SharedPreferences sharedPreferences;
 
     private Handler priceHandler = new Handler(Looper.getMainLooper());
@@ -74,8 +74,12 @@ public class AlarmActivity extends AppCompatActivity {
         highAlarmSwitch = findViewById(R.id.highAlarmSwitch);
         lowAlarmSwitch = findViewById(R.id.lowAlarmSwitch);
         currentPriceTextView = findViewById(R.id.currentPriceTextView);
+        currentCryptoSymbolTextView = findViewById(R.id.currentCryptoSymbolTextView);
 
         priceUpdateIntervalSeconds = sharedPreferences.getInt("refresh_interval", 5);
+
+        String initialSymbol = sharedPreferences.getString("crypto", "Loading...");
+        currentCryptoSymbolTextView.setText(initialSymbol);
 
         loadAlarmSettings();
         setupListeners();
@@ -92,7 +96,6 @@ public class AlarmActivity extends AppCompatActivity {
     }
 
     private void setupListeners() {
-
         highAlarmSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isLoading) return;
             handleSwitchToggle(highAlarmSwitch, highTriggerPriceEditText, PREF_IS_HIGH_ALARM_ON, PREF_HIGH_TRIGGER_PRICE, isChecked);
@@ -129,12 +132,10 @@ public class AlarmActivity extends AppCompatActivity {
     private void handleSwitchToggle(Switch targetSwitch, EditText priceEditText, String prefIsOnKey, String prefPriceKey, boolean isChecked) {
         if (isChecked) {
             String priceStr = priceEditText.getText().toString();
-            double priceValue = -1;
             boolean isValidPrice = false;
-
             if (!priceStr.isEmpty()) {
                 try {
-                    priceValue = Double.parseDouble(priceStr);
+                    Double.parseDouble(priceStr);
                     isValidPrice = true;
                     priceEditText.setError(null);
                 } catch (NumberFormatException e) {
@@ -195,9 +196,7 @@ public class AlarmActivity extends AppCompatActivity {
                 if (intent != null && AlarmCheckService.ACTION_ALARM_STATE_CHANGED.equals(intent.getAction())) {
                     String alarmType = intent.getStringExtra(AlarmCheckService.EXTRA_ALARM_TYPE);
                     boolean newState = intent.getBooleanExtra(AlarmCheckService.EXTRA_ALARM_STATE, false);
-
                     Log.d(TAG, "Received broadcast: Alarm " + alarmType + " state changed to " + newState);
-
                     runOnUiThread(() -> {
                         isLoading = true;
                         if ("high".equals(alarmType) && !newState) {
@@ -216,25 +215,20 @@ public class AlarmActivity extends AppCompatActivity {
         };
     }
 
-
     private void loadAlarmSettings() {
         isLoading = true;
-
         String highPriceStr = sharedPreferences.getString(PREF_HIGH_TRIGGER_PRICE, "");
         boolean isHighOn = sharedPreferences.getBoolean(PREF_IS_HIGH_ALARM_ON, false);
         highTriggerPriceEditText.setText(highPriceStr);
         highAlarmSwitch.setChecked(isHighOn);
         updateSwitchText(highAlarmSwitch, isHighOn);
-
         String lowPriceStr = sharedPreferences.getString(PREF_LOW_TRIGGER_PRICE, "");
         boolean isLowOn = sharedPreferences.getBoolean(PREF_IS_LOW_ALARM_ON, false);
         lowTriggerPriceEditText.setText(lowPriceStr);
         lowAlarmSwitch.setChecked(isLowOn);
         updateSwitchText(lowAlarmSwitch, isLowOn);
-
         Log.d(TAG, "Settings loaded: HighPrice=" + highPriceStr + ", HighOn=" + isHighOn +
                 ", LowPrice=" + lowPriceStr + ", LowOn=" + isLowOn);
-
         isLoading = false;
     }
 
@@ -252,7 +246,10 @@ public class AlarmActivity extends AppCompatActivity {
         if (binanceApi == null) {
             Log.w(TAG, "fetchCurrentPrice: Binance API non initialisée.");
             if (currentPriceTextView != null) {
-                runOnUiThread(() -> currentPriceTextView.setText("API Error"));
+                runOnUiThread(() -> {
+                    currentPriceTextView.setText("API Error");
+                    currentCryptoSymbolTextView.setText("?");
+                });
             }
             return;
         }
@@ -264,22 +261,32 @@ public class AlarmActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     double currentPrice = response.body().getPrice();
                     String symbol = response.body().getSymbol();
-                    if (currentPriceTextView != null) {
-                        runOnUiThread(() -> currentPriceTextView.setText(String.format(java.util.Locale.US, "%.2f", currentPrice)));
+                    if (currentPriceTextView != null && currentCryptoSymbolTextView != null) {
+                        runOnUiThread(() -> {
+                            currentCryptoSymbolTextView.setText(symbol);
+                            currentPriceTextView.setText(String.format(java.util.Locale.US, "%.3f", currentPrice));
+                        });
+
                     }
                 } else {
                     Log.e(TAG, "fetchCurrentPrice - Erreur API : " + response.code());
-                    if (currentPriceTextView != null) {
+                    if (currentPriceTextView != null && currentCryptoSymbolTextView != null) {
                         final int responseCode = response.code();
-                        runOnUiThread(() -> currentPriceTextView.setText("API Err:" + responseCode));
+                        runOnUiThread(() -> {
+                            currentPriceTextView.setText("API Err:" + responseCode);
+                            currentCryptoSymbolTextView.setText("Error");
+                        });
                     }
                 }
             }
             @Override
             public void onFailure(Call<BinancePriceResponse> call, Throwable t) {
                 Log.e(TAG, "fetchCurrentPrice - Échec requête API : " + t.getMessage());
-                if (currentPriceTextView != null) {
-                    runOnUiThread(() -> currentPriceTextView.setText("Network Err"));
+                if (currentPriceTextView != null && currentCryptoSymbolTextView != null) {
+                    runOnUiThread(() -> {
+                        currentPriceTextView.setText("Network Err");
+                        currentCryptoSymbolTextView.setText("?");
+                    });
                 }
             }
         });

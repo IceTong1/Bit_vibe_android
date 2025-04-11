@@ -8,15 +8,26 @@
     tools:context=".AlarmActivity">
 
     <TextView
-        android:id="@+id/currentPriceLabelTextView"
+        android:id="@+id/currentCryptoSymbolTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="Current Price:"
-        android:textSize="18sp"
+        android:text="SYMBOL"
+        android:textAppearance="@style/TextAppearance.AppCompat.Large"
         android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/currentPriceLabelTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Current Price:"
+        android:textSize="18sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/currentCryptoSymbolTextView" />
 
     <TextView
         android:id="@+id/currentPriceTextView"
@@ -32,7 +43,7 @@
         android:id="@+id/highTriggerPriceLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="24dp"
         android:text="High Price Alarm (Notify Left):"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
@@ -108,4 +119,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/lowTriggerPriceEditText"
-        app:layout_constraintVertical_bias="0.8"/> </androidx.constraintlayout.widget.ConstraintLayout>
+        app:layout_constraintVertical_bias="0.8"/>
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
