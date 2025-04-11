@@ -273,7 +273,7 @@ public class MainActivity extends AppCompatActivity {
                             } else {
                                 Log.w(TAG, "Service Bluetooth non lié, impossible de faire vibrer les bracelets.");
                             }
-                            // --- FIN IMPLÉMENTATION ---
+
 
                             Log.d(TAG, (percentageChange > 0 ? "Hausse" : "Baisse") + " détectée (" + String.format(java.util.Locale.US, "%.2f", percentageChange) + "%)");
                             lastPrice = currentPrice; // Mettre à jour lastPrice SEULEMENT si changement significatif détecté

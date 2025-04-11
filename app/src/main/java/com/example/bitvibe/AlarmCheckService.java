@@ -8,8 +8,8 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
-import android.content.Intent; // Ajout de l'import Intent
-import android.content.SharedPreferences;
+import android.content.Intent;
+import android.content.SharedPreferences; // Assurez-vous que cet import est présent
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -31,11 +31,15 @@ public class AlarmCheckService extends Service {
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable runnable;
 
-    // --- Constantes pour les Bracelets et Vibration --- AJOUTÉES ---
+    // --- Constantes pour les Bracelets ---
     private static final String LEFT_BRACELET_MAC = "BC:57:29:13:FA:DE";
     private static final String RIGHT_BRACELET_MAC = "BC:57:29:13:FA:E0";
-    private static final int RING_TYPE_VIBRATE = 4; // Type pour la vibration
-    // --- FIN AJOUTS CONSTANTES ---
+
+    // --- Clé et valeur par défaut pour le type de notification
+    private static final String PREFS_NAME = "BitVibePrefs"; // Assurez-vous que c'est le bon nom
+    private static final String PREF_NOTIFICATION_TYPE = "notification_type";
+    private static final int DEFAULT_NOTIFICATION_TYPE = 6; // LED + VIB (valeur 6) par défaut
+
 
     @Override
     public void onCreate() {
@@ -48,7 +52,6 @@ public class AlarmCheckService extends Service {
         Log.d(TAG, "Service started");
         startForeground(NOTIFICATION_ID, createNotification());
 
-        // Initialize the runnable for periodic alarm checks
         runnable = new Runnable() {
             @Override
             public void run() {
@@ -72,14 +75,12 @@ public class AlarmCheckService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
-        // Ce service ne supporte pas le binding
         return null;
     }
 
-    // Method to check the alarm
     private void checkAlarm() {
-        SharedPreferences prefs = getSharedPreferences("BitVibePrefs", Context.MODE_PRIVATE);
-        String selectedCrypto = prefs.getString("crypto", "DOGEUSDT"); // Default to DOGEUSDT if not set
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String selectedCrypto = prefs.getString("crypto", "DOGEUSDT");
         Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice(selectedCrypto);
 
         call.enqueue(new Callback<BinancePriceResponse>() {
@@ -100,22 +101,19 @@ public class AlarmCheckService extends Service {
         });
     }
 
-    // Method to compare the current price with the alarm settings
     private void comparePriceWithAlarm(double currentPrice) {
-        SharedPreferences prefs = getSharedPreferences("BitVibePrefs", Context.MODE_PRIVATE);
-        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false); // Load alarm state
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
 
-        if (isAlarmOn) { // Only proceed if alarm is ON
+        if (isAlarmOn) {
             if (prefs.contains("trigger_price") && prefs.contains("is_above")) {
                 double triggerPrice = Double.parseDouble(prefs.getString("trigger_price", "0.0"));
                 boolean isAbove = prefs.getBoolean("is_above", false);
 
                 Log.d(TAG, "comparing : trigger Price = " + triggerPrice + ", is Above = " + isAbove + " currentPrice : " + currentPrice);
                 if ((!isAbove && currentPrice >= triggerPrice) || (isAbove && currentPrice <= triggerPrice)) {
-                    // Trigger alarm!
                     Log.d(TAG, "ALARM TRIGGERED!");
                     triggerAlarm(); // Appel de la méthode modifiée
-
                 } else {
                     Log.d(TAG, "Not Triggered !");
                 }
@@ -123,44 +121,47 @@ public class AlarmCheckService extends Service {
         }
     }
 
-    // Method to trigger the alarm (show a Toast and vibrate bracelets)
-    private void triggerAlarm() {
-        Log.d(TAG, "Déclenchement de l'alarme et des vibrations...");
 
-        // --- VIBRATION BRACELET GAUCHE ---
+    private void triggerAlarm() {
+        // 1. Lire le type de notification choisi dans les préférences
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        int selectedNotificationType = prefs.getInt(PREF_NOTIFICATION_TYPE, DEFAULT_NOTIFICATION_TYPE);
+        Log.d(TAG, "Déclenchement de l'alarme. Type de notification choisi : " + selectedNotificationType);
+
+        // 2. Envoyer la commande pour le bracelet GAUCHE
         Intent intentLeft = new Intent(this, BluetoothConnectionService.class);
         intentLeft.setAction(BluetoothConnectionService.ACTION_RING_DEVICE);
         intentLeft.putExtra(BluetoothConnectionService.EXTRA_MAC_ADDRESS, LEFT_BRACELET_MAC);
-        intentLeft.putExtra(BluetoothConnectionService.EXTRA_RING_TYPE, RING_TYPE_VIBRATE);
+        intentLeft.putExtra(BluetoothConnectionService.EXTRA_RING_TYPE, selectedNotificationType); // Utilisation de la valeur lue
         try {
             startService(intentLeft);
-            Log.d(TAG, "Intent envoyé pour faire vibrer le bracelet GAUCHE.");
+            Log.d(TAG, "Intent envoyé pour bracelet GAUCHE (Type: " + selectedNotificationType + ")");
         } catch (Exception e) {
             Log.e(TAG, "Erreur lors du démarrage du service pour bracelet GAUCHE", e);
         }
 
-        // Petite pause pour éviter de surcharger le service ou le BT (optionnel mais peut aider)
+        // 3. Envoyer la commande pour le bracelet DROIT (avec petit délai)
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             Intent intentRight = new Intent(this, BluetoothConnectionService.class);
             intentRight.setAction(BluetoothConnectionService.ACTION_RING_DEVICE);
             intentRight.putExtra(BluetoothConnectionService.EXTRA_MAC_ADDRESS, RIGHT_BRACELET_MAC);
-            intentRight.putExtra(BluetoothConnectionService.EXTRA_RING_TYPE, RING_TYPE_VIBRATE);
+            intentRight.putExtra(BluetoothConnectionService.EXTRA_RING_TYPE, selectedNotificationType); // Utilisation de la valeur lue
             try {
                 startService(intentRight);
-                Log.d(TAG, "Intent envoyé pour faire vibrer le bracelet DROIT.");
+                Log.d(TAG, "Intent envoyé pour bracelet DROIT (Type: " + selectedNotificationType + ")");
             } catch (Exception e) {
                 Log.e(TAG, "Erreur lors du démarrage du service pour bracelet DROIT", e);
             }
-        }, 100); // Délai de 100ms entre les deux commandes
+        }, 150); // Augmentation légère du délai si nécessaire
 
-        // --- AFFICHAGE DU TOAST ---
-        // Utiliser le Handler pour afficher le Toast sur le thread UI
+        // 4. Afficher le Toast
         new Handler(Looper.getMainLooper()).post(() -> {
             Toast.makeText(getApplicationContext(), "PRICE ALARM TRIGGERED!", Toast.LENGTH_LONG).show();
         });
     }
 
-    // Method to create the notification for the foreground service
+
+
     private Notification createNotification() {
         createNotificationChannel();
         Intent notificationIntent = new Intent(this, MainActivity.class);
@@ -174,12 +175,11 @@ public class AlarmCheckService extends Service {
         return builder.build();
     }
 
-    // Method to create the notification channel (required for Android Oreo and above)
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             CharSequence name = "BitVibe Alarm Channel";
             String description = "Channel for BitVibe price alarm";
-            int importance = NotificationManager.IMPORTANCE_LOW; // Use a lower importance for the service notification
+            int importance = NotificationManager.IMPORTANCE_LOW;
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
             channel.setDescription(description);
             NotificationManager notificationManager = getSystemService(NotificationManager.class);

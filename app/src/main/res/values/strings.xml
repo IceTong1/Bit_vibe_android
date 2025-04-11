@@ -4,29 +4,20 @@
     <string name="title_activity_bracelet_connect">Connexion Bracelets</string>
 
 
-    <!-- Currency array -->
     <string-array name="currency_array">
         <item>USD</item>
         <item>EUR</item>
-        <!-- Add more currencies as needed -->
     </string-array>
 
-
-    <!-- Vibration Intensity array -->
-    <string-array name="vibration_intensity_array">
-        <item>1</item>
-        <item>2</item>
-        <item>3</item>
-    </string-array>
+    <string-array name="notification_type_array">
+        <item>Beep</item>           <item>LED</item>            <item>Vibration</item>      <item>LED + Vibration</item>  <item>VIB + LED + Beep</item> </string-array>
 
 
-    <!-- Language array -->
     <string-array name="language_array">
         <item>english</item>
         <item>french</item>
     </string-array>
 
-    <!-- Crypto array -->
     <string-array name="crypto_array">
         <item>BTCUSDT</item>
         <item>DOGEUSDT</item>
@@ -36,11 +27,9 @@
     </string-array>
 
 
-    <!-- Other string resources -->
     <string name="refresh_interval">Refresh Interval (seconds):</string>
     <string name="currency">Currency:</string>
-    <string name="vibration_intensity">Vibration Intensity:</string>
-    <string name="language">Language:</string>
+    <string name="notification_type">Notification Type:</string> <string name="language">Language:</string>
     <string name="tolerance_percentage">tolerance Percentage:</string>
     <string name="save">Save</string>
     <string name="tolerance_percentage_hint">Enter tolerance percentage</string>

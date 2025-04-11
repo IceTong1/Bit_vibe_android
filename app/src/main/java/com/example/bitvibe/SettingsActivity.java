@@ -1,5 +1,6 @@
 package com.example.bitvibe;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -17,150 +18,206 @@ public class SettingsActivity extends AppCompatActivity {
     private EditText refreshIntervalEditText;
     private EditText tolerancePercentageEditText;
     private Spinner currencySpinner;
-    private Spinner vibrationIntensitySpinner;
+    private Spinner notificationTypeSpinner; // Anciennement vibrationIntensitySpinner
     private Spinner languageSpinner;
     private Spinner cryptoSpinner;
     private SharedPreferences prefs;
+
+    // Clé pour le nouveau paramètre
+    private static final String PREF_NOTIFICATION_TYPE = "notification_type";
+
+    // Constantes pour les types de notification (correspondant aux valeurs de ringType)
+    private static final int NOTIF_TYPE_BEEP = 1;
+    private static final int NOTIF_TYPE_LED = 2;
+    private static final int NOTIF_TYPE_VIBRATE = 4;
+    private static final int NOTIF_TYPE_LED_VIBRATE = 6; // (LED | VIBRATE)
+    private static final int NOTIF_TYPE_VIB_LED_BEEP = 7; // Ajouté : (VIB | LED | BEEP)
+
+
+    private static final int DEFAULT_NOTIFICATION_TYPE = NOTIF_TYPE_LED_VIBRATE; // Défaut: LED + VIB (6)
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
 
-
-        // Get the reference to the button in the layout
+        // Bouton Retour
         Button backButton = findViewById(R.id.mainActivityButton);
-        // Set the click listener
         backButton.setOnClickListener(v -> {
             saveSettings();
             OnBackPressedDispatcher dispatcher = getOnBackPressedDispatcher();
             dispatcher.onBackPressed();
         });
 
-
-        // Initialize SharedPreferences
-        prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE); // charger la base de données des preferences (parametres) sauvegardées
-
-
+        // Initialiser SharedPreferences
+        prefs = getSharedPreferences("BitVibePrefs", Context.MODE_PRIVATE);
 
         // Bind UI elements
         refreshIntervalEditText = findViewById(R.id.refresh_interval_edittext);
         tolerancePercentageEditText = findViewById(R.id.tolerance_percentage_edittext);
-        currencySpinner = findViewById(R.id.currency_spinner); // TODO : make it usefull or delete it
-        vibrationIntensitySpinner = findViewById(R.id.vibration_intensity_spinner);
-        languageSpinner = findViewById(R.id.language_spinner); // TODO : make it usefull or delete it
+        currencySpinner = findViewById(R.id.currency_spinner);
+        notificationTypeSpinner = findViewById(R.id.notification_type_spinner);
+        languageSpinner = findViewById(R.id.language_spinner);
         cryptoSpinner = findViewById(R.id.crypto_spinner);
 
-        // Load current settings
-        int currentInterval = prefs.getInt("refresh_interval", 5); // Default: 5 seconds
+        // --- Charger les paramètres courants ---
+
+        // Intervalle de rafraîchissement
+        int currentInterval = prefs.getInt("refresh_interval", 5);
         refreshIntervalEditText.setText(String.valueOf(currentInterval));
 
-        float currentTolerance = prefs.getFloat("tolerance_percentage", 1.111f); // Default tolerance: 1.111
+        // Tolérance en pourcentage
+        float currentTolerance = prefs.getFloat("tolerance_percentage", 0.01f);
         tolerancePercentageEditText.setText(String.valueOf(currentTolerance));
 
-        // Set up the currency spinner
-        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
+        // Spinner Devise
+        ArrayAdapter<CharSequence> currencyAdapter = ArrayAdapter.createFromResource(this,
                 R.array.currency_array, android.R.layout.simple_spinner_item);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        currencySpinner.setAdapter(adapter);
-
-        // Set the current currency in the spinner
+        currencyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        currencySpinner.setAdapter(currencyAdapter);
         String currentCurrency = prefs.getString("currency", "USD");
-        int spinnerPosition = adapter.getPosition(currentCurrency);
-        currencySpinner.setSelection(spinnerPosition);
-
-        // Set up the vibration intensity spinner
-        ArrayAdapter<CharSequence> intensityAdapter = ArrayAdapter.createFromResource(this,
-                R.array.vibration_intensity_array, android.R.layout.simple_spinner_item);
-        intensityAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        vibrationIntensitySpinner.setAdapter(intensityAdapter);
-
-        // Set the current vibration intensity in the spinner
-        int currentIntensity = prefs.getInt("vibration_intensity", 2); // Default intensity: 2
-        vibrationIntensitySpinner.setSelection(currentIntensity - 1); // Adjust for array index (1-3 becomes 0-2)
+        int currencyPosition = currencyAdapter.getPosition(currentCurrency);
+        currencySpinner.setSelection(currencyPosition);
 
 
-        // Set up the language spinner
+        // Spinner Type Notification
+        ArrayAdapter<CharSequence> notificationTypeAdapter = ArrayAdapter.createFromResource(this,
+                R.array.notification_type_array, android.R.layout.simple_spinner_item);
+        notificationTypeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        notificationTypeSpinner.setAdapter(notificationTypeAdapter);
+        // Charger la valeur sauvegardée (int) et trouver la position correspondante
+        int currentNotificationType = prefs.getInt(PREF_NOTIFICATION_TYPE, DEFAULT_NOTIFICATION_TYPE); // Utilisation de la nouvelle valeur par défaut
+        int notificationTypePosition = mapRingTypeToPosition(currentNotificationType);
+        notificationTypeSpinner.setSelection(notificationTypePosition);
+
+
+        // Spinner Langue
         ArrayAdapter<CharSequence> languageAdapter = ArrayAdapter.createFromResource(this,
                 R.array.language_array, android.R.layout.simple_spinner_item);
         languageAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         languageSpinner.setAdapter(languageAdapter);
-
-        // Set the current language in the spinner
         String currentLanguage = prefs.getString("language", "english");
         int languagePosition = languageAdapter.getPosition(currentLanguage);
         languageSpinner.setSelection(languagePosition);
 
 
-        // Set up the crypto spinner
+        // Spinner Crypto
         ArrayAdapter<CharSequence> cryptoAdapter = ArrayAdapter.createFromResource(this,
                 R.array.crypto_array, android.R.layout.simple_spinner_item);
         cryptoAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         cryptoSpinner.setAdapter(cryptoAdapter);
-
-        // Set the current crypto in the spinner
-        String currentCrypto = prefs.getString("crypto", "bitcoin");
+        String currentCrypto = prefs.getString("crypto", "DOGEUSDT");
         int cryptoPosition = cryptoAdapter.getPosition(currentCrypto);
+        if (cryptoPosition < 0) {
+            cryptoPosition = cryptoAdapter.getPosition("DOGEUSDT");
+        }
         cryptoSpinner.setSelection(cryptoPosition);
-        //add edit text for tolerance percentage
 
 
-        //Log data for debug
-        Log.d("SettingsActivity",
-                "Loaded settings - Refresh Interval: " + currentInterval
-                + " seconds, Currency: " + currentCurrency
-                + ", Vibration Intensity: " + currentIntensity
-                + ", Language: " + currentLanguage
-                + ", Tolerance Percentage: " + currentTolerance
-                + ", Crypto: " + currentCrypto);
-
-
+        logLoadedPrefs();
     }
 
     private void saveSettings() {
         SharedPreferences.Editor editor = prefs.edit();
 
-        // Save refresh interval
+        // Sauvegarder intervalle de rafraîchissement
         String intervalStr = refreshIntervalEditText.getText().toString();
         if (!intervalStr.isEmpty()) {
-            int interval = Integer.parseInt(intervalStr);
-            editor.putInt("refresh_interval", interval);
+            try {
+                int interval = Integer.parseInt(intervalStr);
+                if (interval > 0) {
+                    editor.putInt("refresh_interval", interval);
+                } else {
+                    Toast.makeText(this, "Invalid refresh interval", Toast.LENGTH_SHORT).show();
+                }
+            } catch (NumberFormatException e) {
+                Toast.makeText(this, "Invalid number format for interval", Toast.LENGTH_SHORT).show();
+            }
         }
 
-        // Save tolerance percentage
+        // Sauvegarder tolérance en pourcentage
         String toleranceStr = tolerancePercentageEditText.getText().toString();
         if (!toleranceStr.isEmpty()) {
-            float tolerance = Float.parseFloat(toleranceStr);
-            editor.putFloat("tolerance_percentage", tolerance);
+            try {
+                float tolerance = Float.parseFloat(toleranceStr);
+                if (tolerance >= 0) {
+                    editor.putFloat("tolerance_percentage", tolerance);
+                } else {
+                    Toast.makeText(this, "Invalid tolerance percentage", Toast.LENGTH_SHORT).show();
+                }
+            } catch (NumberFormatException e) {
+                Toast.makeText(this, "Invalid number format for tolerance", Toast.LENGTH_SHORT).show();
+            }
         }
 
-        // Save currency
+        // Sauvegarder devise
         String selectedCurrency = currencySpinner.getSelectedItem().toString();
         editor.putString("currency", selectedCurrency);
 
-        // Save vibration intensity
-        int selectedIntensity = vibrationIntensitySpinner.getSelectedItemPosition() + 1; // Adjust back to 1-3
-        editor.putInt("vibration_intensity", selectedIntensity);
+        // Sauvegarde Type Notification
+        int selectedNotificationPosition = notificationTypeSpinner.getSelectedItemPosition();
+        int selectedNotificationType = mapPositionToRingType(selectedNotificationPosition); // Utilisation de la méthode de mapping mise à jour
+        editor.putInt(PREF_NOTIFICATION_TYPE, selectedNotificationType);
 
-        // Save language
+        // Sauvegarder langue
         String selectedLanguage = languageSpinner.getSelectedItem().toString();
         editor.putString("language", selectedLanguage);
 
-        //Save crypto
+        // Sauvegarder crypto
         String selectedCrypto = cryptoSpinner.getSelectedItem().toString();
         editor.putString("crypto", selectedCrypto);
 
-        // Apply changes
+        // Appliquer les changements
         editor.apply();
         Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show();
 
         Log.d("SettingsActivity",
                 "Saved settings - Refresh Interval: " + prefs.getInt("refresh_interval", -1)
-                + " seconds, Currency: " + prefs.getString("currency", "null")
-                + ", Vibration Intensity: " + prefs.getInt("vibration_intensity", -1)
-                + ", Language: " + prefs.getString("language", "null")
-                + ", Tolerance Percentage: " + prefs.getFloat("tolerance_percentage", -1.0f)
-                + ", Crypto: " + prefs.getString("crypto", "null"));
+                        + ", Tolerance Percentage: " + prefs.getFloat("tolerance_percentage", -1.0f)
+                        + ", Currency: " + prefs.getString("currency", "null")
+                        + ", Notification Type: " + prefs.getInt(PREF_NOTIFICATION_TYPE, -1)
+                        + ", Language: " + prefs.getString("language", "null")
+                        + ", Crypto: " + prefs.getString("crypto", "null"));
+    }
+
+
+    private int mapPositionToRingType(int position) {
+        switch (position) {
+            case 0: return NOTIF_TYPE_BEEP;
+            case 1: return NOTIF_TYPE_LED;
+            case 2: return NOTIF_TYPE_VIBRATE;
+            case 3: return NOTIF_TYPE_LED_VIBRATE;
+            case 4: return NOTIF_TYPE_VIB_LED_BEEP;
+            default: return DEFAULT_NOTIFICATION_TYPE;
+        }
+    }
+
+
+    private int mapRingTypeToPosition(int ringType) {
+        switch (ringType) {
+            case NOTIF_TYPE_BEEP: return 0;
+            case NOTIF_TYPE_LED: return 1;
+            case NOTIF_TYPE_VIBRATE: return 2;
+            case NOTIF_TYPE_LED_VIBRATE: return 3;
+            case NOTIF_TYPE_VIB_LED_BEEP: return 4;
+            default: return mapRingTypeToPosition(DEFAULT_NOTIFICATION_TYPE);
+        }
+    }
+
+    private void logLoadedPrefs() {
+        int currentInterval = prefs.getInt("refresh_interval", -1);
+        float currentTolerance = prefs.getFloat("tolerance_percentage", -1.0f);
+        String currentCurrency = prefs.getString("currency", "N/A");
+        int currentNotificationType = prefs.getInt(PREF_NOTIFICATION_TYPE, -1);
+        String currentLanguage = prefs.getString("language", "N/A");
+        String currentCrypto = prefs.getString("crypto", "N/A");
+
+        Log.d("SettingsActivity",
+                "Loaded settings - Refresh Interval: " + currentInterval
+                        + ", Tolerance Percentage: " + currentTolerance
+                        + ", Currency: " + currentCurrency
+                        + ", Notification Type: " + currentNotificationType
+                        + ", Language: " + currentLanguage
+                        + ", Crypto: " + currentCrypto);
     }
 }
-
