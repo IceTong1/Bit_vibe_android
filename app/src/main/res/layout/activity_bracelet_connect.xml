@@ -12,7 +12,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="36dp"
-        android:text="Scanner"
+        android:text="Scan"
         app:layout_constraintBottom_toTopOf="@+id/mainActivityButton"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
@@ -34,7 +34,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
-        android:text="Bracelet Gauche"
+        android:text="Left Bracelet"
         android:textAppearance="@style/TextAppearance.AppCompat.Medium"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
@@ -45,7 +45,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="MAC: (Non défini)"
+        android:text="MAC: (Undefined)"
         app:layout_constraintStart_toStartOf="@+id/tvLabelLeft"
         app:layout_constraintTop_toBottomOf="@+id/tvLabelLeft" />
 
@@ -55,7 +55,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="Connecter Gauche"
+        android:text="Connect Left"
         app:layout_constraintStart_toStartOf="@+id/tvMacLeft"
         app:layout_constraintTop_toBottomOf="@+id/tvMacLeft" />
 
@@ -64,7 +64,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:text="Déconnecté"
+        android:text="Disconnected"
         app:layout_constraintBaseline_toBaselineOf="@id/btnConnectLeft"
         app:layout_constraintStart_toEndOf="@+id/btnConnectLeft" />
 
@@ -85,7 +85,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:text="Beep G"
+            android:text="Beep L"
             android:textSize="10sp" />
 
         <Button
@@ -94,7 +94,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:text="LED G"
+            android:text="LED L"
             android:textSize="10sp" />
 
         <Button
@@ -103,7 +103,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:text="Vib G"
+            android:text="Vib L"
             android:textSize="10sp" />
 
         <Button
@@ -112,7 +112,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:text="LED+Vib G"
+            android:text="LED+Vib L"
             android:textSize="10sp" />
 
         <Button
@@ -121,7 +121,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:text="Stop G"
+            android:text="Stop L"
             android:textSize="10sp" />
 
     </LinearLayout>
@@ -144,7 +144,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
-        android:text="Bracelet Droit"
+        android:text="Right Bracelet"
         android:textAppearance="@style/TextAppearance.AppCompat.Medium"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
@@ -155,7 +155,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="MAC: (Non défini)"
+        android:text="MAC: (Undefined)"
         app:layout_constraintStart_toStartOf="@+id/tvLabelRight"
         app:layout_constraintTop_toBottomOf="@+id/tvLabelRight" />
 
@@ -165,7 +165,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="Connecter Droit"
+        android:text="Connect Right"
         app:layout_constraintStart_toStartOf="@+id/tvMacRight"
         app:layout_constraintTop_toBottomOf="@+id/tvMacRight" />
 
@@ -174,7 +174,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:text="Déconnecté"
+        android:text="Disconnected"
         app:layout_constraintBaseline_toBaselineOf="@id/btnConnectRight"
         app:layout_constraintStart_toEndOf="@+id/btnConnectRight" />
 
@@ -195,7 +195,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:text="Beep D"
+            android:text="Beep R"
             android:textSize="10sp" />
 
         <Button
@@ -204,7 +204,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:text="LED D"
+            android:text="LED R"
             android:textSize="10sp" />
 
         <Button
@@ -213,7 +213,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:text="Vib D"
+            android:text="Vib R"
             android:textSize="10sp" />
 
         <Button
@@ -222,7 +222,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:text="LED+Vib D"
+            android:text="LED+Vib R"
             android:textSize="10sp" />
 
         <Button
@@ -231,7 +231,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:text="Stop D"
+            android:text="Stop R"
             android:textSize="10sp" />
     </LinearLayout>
 

@@ -165,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.i(TAG, "Toutes les permissions nécessaires (Bluetooth/Localisation) ont été accordées.");
             } else {
                 Log.w(TAG, "Certaines permissions Bluetooth/Localisation ont été refusées.");
-                Toast.makeText(this, "Permissions manquantes, certaines fonctionnalités peuvent ne pas marcher.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Missing permissions, some features may not work.", Toast.LENGTH_LONG).show();
             }
         }
     }
@@ -217,7 +217,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onFailure(@NonNull Call<BinancePriceResponse> call, @NonNull Throwable t) {
                 Log.e(TAG, "Échec requête API : " + t.getMessage(), t);
-                if (bitcoinPriceTextView != null) bitcoinPriceTextView.setText("Échec connexion API");
+                if (bitcoinPriceTextView != null) bitcoinPriceTextView.setText("API Connection Failed");
             }
         });
     }
