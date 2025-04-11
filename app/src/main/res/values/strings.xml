@@ -1,8 +1,11 @@
 <resources>
     <string name="app_name">BitVibe</string>
-    <string name="title_activity_settings">SettingsActivity</string>
+
+    <string name="title_activity_settings">Paramètres</string>
+
     <string name="title_activity_bracelet_connect">Connexion Bracelets</string>
 
+    <string name="title_activity_alarm">Alarme</string>
 
     <string-array name="currency_array">
         <item>USD</item>
@@ -10,7 +13,12 @@
     </string-array>
 
     <string-array name="notification_type_array">
-        <item>Beep</item>           <item>LED</item>            <item>Vibration</item>      <item>LED + Vibration</item>  <item>VIB + LED + Beep</item> </string-array>
+        <item>Beep</item>
+        <item>LED</item>
+        <item>Vibration</item>
+        <item>LED + Vibration</item>
+        <item>VIB + LED + Beep</item>
+    </string-array>
 
 
     <string-array name="language_array">
@@ -29,7 +37,8 @@
 
     <string name="refresh_interval">Refresh Interval (seconds):</string>
     <string name="currency">Currency:</string>
-    <string name="notification_type">Notification Type:</string> <string name="language">Language:</string>
+    <string name="notification_type">Notification Type:</string>
+    <string name="language">Language:</string>
     <string name="tolerance_percentage">tolerance Percentage:</string>
     <string name="save">Save</string>
     <string name="tolerance_percentage_hint">Enter tolerance percentage</string>

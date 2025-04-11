@@ -10,12 +10,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/>
-
-    <uses-feature
-        android:name="android.hardware.bluetooth_le"
-        android:required="true" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" /> <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/> <uses-feature
+    android:name="android.hardware.bluetooth_le"
+    android:required="true" />
 
     <application
         android:allowBackup="true"
@@ -27,19 +24,21 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BitVibe"
         tools:targetApi="31">
+
         <service
             android:name=".BluetoothConnectionService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
+
         <service
             android:name=".AlarmCheckService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
         <activity
             android:name=".SettingsActivity"
             android:exported="false"
-            android:label="@string/title_activity_settings"
-            android:theme="@style/Theme.BitVibe" >
+            android:label="@string/title_activity_settings" android:theme="@style/Theme.BitVibe" >
         </activity>
 
         <activity
@@ -54,12 +53,9 @@
         <activity
             android:name=".bracelet.BraceletConnectActivity"
             android:exported="false"
-            android:label="@string/title_activity_bracelet_connect"/>
-
-        <activity
-            android:name=".AlarmActivity"
-            android:exported="false" />
-
-    </application>
+            android:label="@string/title_activity_bracelet_connect"/> <activity
+        android:name=".AlarmActivity"
+        android:exported="false"
+        android:label="@string/title_activity_alarm" /> </application>
 
 </manifest>
