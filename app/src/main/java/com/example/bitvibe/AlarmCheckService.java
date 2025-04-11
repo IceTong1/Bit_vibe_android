@@ -1,3 +1,5 @@
+
+
 package com.example.bitvibe;
 
 import static com.example.bitvibe.MainActivity.binanceApi;
@@ -9,7 +11,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences; // Assurez-vous que cet import est présent
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -18,6 +20,8 @@ import android.util.Log;
 import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat; // Ajout de cet import
+
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -27,18 +31,18 @@ public class AlarmCheckService extends Service {
     private static final String TAG = "AlarmCheckService";
     private static final String CHANNEL_ID = "BitVibeAlarmChannel";
     private static final int NOTIFICATION_ID = 1;
-    private static final int ALARM_CHECK_INTERVAL = 10000; // Check every 10 seconds
+    private static final int ALARM_CHECK_INTERVAL = 10000;
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable runnable;
 
-    // --- Constantes pour les Bracelets ---
+
     private static final String LEFT_BRACELET_MAC = "BC:57:29:13:FA:DE";
     private static final String RIGHT_BRACELET_MAC = "BC:57:29:13:FA:E0";
 
-    // --- Clé et valeur par défaut pour le type de notification
-    private static final String PREFS_NAME = "BitVibePrefs"; // Assurez-vous que c'est le bon nom
+
+    private static final String PREFS_NAME = "BitVibePrefs";
     private static final String PREF_NOTIFICATION_TYPE = "notification_type";
-    private static final int DEFAULT_NOTIFICATION_TYPE = 6; // LED + VIB (valeur 6) par défaut
+    private static final int DEFAULT_NOTIFICATION_TYPE = 6;
 
 
     @Override
@@ -79,6 +83,10 @@ public class AlarmCheckService extends Service {
     }
 
     private void checkAlarm() {
+        if (binanceApi == null) {
+            Log.e(TAG, "checkAlarm: binanceApi is null. Cannot check price.");
+            return;
+        }
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String selectedCrypto = prefs.getString("crypto", "DOGEUSDT");
         Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice(selectedCrypto);
@@ -90,13 +98,13 @@ public class AlarmCheckService extends Service {
                     double currentPrice = response.body().getPrice();
                     comparePriceWithAlarm(currentPrice);
                 } else {
-                    Log.e(TAG, "Erreur API : " + response.code());
+                    Log.e(TAG, "Erreur API lors de la récupération du prix: " + response.code());
                 }
             }
 
             @Override
             public void onFailure(Call<BinancePriceResponse> call, Throwable t) {
-                Log.e(TAG, "Échec de la requête API : " + t.getMessage(), t);
+                Log.e(TAG, "Échec de la requête API pour le prix: " + t.getMessage(), t);
             }
         });
     }
@@ -107,83 +115,130 @@ public class AlarmCheckService extends Service {
 
         if (isAlarmOn) {
             if (prefs.contains("trigger_price") && prefs.contains("is_above")) {
-                double triggerPrice = Double.parseDouble(prefs.getString("trigger_price", "0.0"));
-                boolean isAbove = prefs.getBoolean("is_above", false);
-
-                Log.d(TAG, "comparing : trigger Price = " + triggerPrice + ", is Above = " + isAbove + " currentPrice : " + currentPrice);
-                if ((!isAbove && currentPrice >= triggerPrice) || (isAbove && currentPrice <= triggerPrice)) {
-                    Log.d(TAG, "ALARM TRIGGERED!");
-                    triggerAlarm(); // Appel de la méthode modifiée
-                } else {
-                    Log.d(TAG, "Not Triggered !");
+                double triggerPrice = 0.0;
+                try {
+                    triggerPrice = Double.parseDouble(prefs.getString("trigger_price", "0.0"));
+                } catch (NumberFormatException e) {
+                    Log.e(TAG, "Erreur de parsing du trigger_price depuis SharedPreferences", e);
+                    return;
                 }
+
+                boolean wasAboveWhenSet = prefs.getBoolean("is_above", false);
+
+                Log.d(TAG, "Vérification: Prix Actuel=" + currentPrice + ", Seuil=" + triggerPrice + ", Était Au-dessus Lors du Set=" + wasAboveWhenSet);
+
+                String targetMacAddress = null;
+                String triggerReason = "";
+
+
+                if (!wasAboveWhenSet && currentPrice >= triggerPrice) {
+                    Log.d(TAG, "ALARM TRIGGERED! Condition: Montée au-dessus du seuil.");
+                    targetMacAddress = LEFT_BRACELET_MAC;
+                    triggerReason = "Hausse du prix au-dessus de " + triggerPrice;
+                }
+
+                else if (wasAboveWhenSet && currentPrice <= triggerPrice) {
+                    Log.d(TAG, "ALARM TRIGGERED! Condition: Descente en dessous du seuil.");
+                    targetMacAddress = RIGHT_BRACELET_MAC;
+                    triggerReason = "Baisse du prix en dessous de " + triggerPrice;
+                } else {
+                    Log.d(TAG, "Condition d'alarme non remplie.");
+                }
+
+
+                if (targetMacAddress != null) {
+
+                    int selectedNotificationType = prefs.getInt(PREF_NOTIFICATION_TYPE, DEFAULT_NOTIFICATION_TYPE);
+                    Log.d(TAG, "Type de notification choisi: " + selectedNotificationType);
+
+
+                    sendBraceletNotification(targetMacAddress, selectedNotificationType);
+
+
+                    final String finalTriggerReason = triggerReason;
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        Toast.makeText(getApplicationContext(), "ALARM TRIGGERED!\n" + finalTriggerReason, Toast.LENGTH_LONG).show();
+                    });
+
+
+                    SharedPreferences.Editor editor = prefs.edit();
+                    editor.putBoolean("is_alarm_on", false);
+                    editor.apply();
+                    Log.d(TAG, "Alarme désactivée après déclenchement pour MAC: " + targetMacAddress);
+
+
+                }
+            } else {
+                Log.w(TAG, "Vérification ignorée: trigger_price ou is_above manquant dans SharedPreferences.");
             }
+        } else {
+            Log.d(TAG, "Vérification ignorée: Alarme désactivée (is_alarm_on=false).");
         }
     }
 
 
-    private void triggerAlarm() {
-        // 1. Lire le type de notification choisi dans les préférences
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        int selectedNotificationType = prefs.getInt(PREF_NOTIFICATION_TYPE, DEFAULT_NOTIFICATION_TYPE);
-        Log.d(TAG, "Déclenchement de l'alarme. Type de notification choisi : " + selectedNotificationType);
+    private void sendBraceletNotification(String macAddress, int ringType) {
+        if (macAddress == null || macAddress.isEmpty()) {
+            Log.w(TAG, "Tentative d'envoi de notification sans adresse MAC.");
+            return;
+        }
 
-        // 2. Envoyer la commande pour le bracelet GAUCHE
-        Intent intentLeft = new Intent(this, BluetoothConnectionService.class);
-        intentLeft.setAction(BluetoothConnectionService.ACTION_RING_DEVICE);
-        intentLeft.putExtra(BluetoothConnectionService.EXTRA_MAC_ADDRESS, LEFT_BRACELET_MAC);
-        intentLeft.putExtra(BluetoothConnectionService.EXTRA_RING_TYPE, selectedNotificationType); // Utilisation de la valeur lue
+        Intent intent = new Intent(this, BluetoothConnectionService.class);
+        intent.setAction(BluetoothConnectionService.ACTION_RING_DEVICE);
+        intent.putExtra(BluetoothConnectionService.EXTRA_MAC_ADDRESS, macAddress);
+        intent.putExtra(BluetoothConnectionService.EXTRA_RING_TYPE, ringType);
+
         try {
-            startService(intentLeft);
-            Log.d(TAG, "Intent envoyé pour bracelet GAUCHE (Type: " + selectedNotificationType + ")");
-        } catch (Exception e) {
-            Log.e(TAG, "Erreur lors du démarrage du service pour bracelet GAUCHE", e);
-        }
 
-        // 3. Envoyer la commande pour le bracelet DROIT (avec petit délai)
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            Intent intentRight = new Intent(this, BluetoothConnectionService.class);
-            intentRight.setAction(BluetoothConnectionService.ACTION_RING_DEVICE);
-            intentRight.putExtra(BluetoothConnectionService.EXTRA_MAC_ADDRESS, RIGHT_BRACELET_MAC);
-            intentRight.putExtra(BluetoothConnectionService.EXTRA_RING_TYPE, selectedNotificationType); // Utilisation de la valeur lue
+            startService(intent);
+            Log.d(TAG, "Intent envoyé pour faire sonner/vibrer le bracelet " + macAddress + " (Type: " + ringType + ")");
+        } catch (IllegalStateException e) {
+
+            Log.e(TAG, "Erreur (IllegalStateException) lors du démarrage du service pour bracelet " + macAddress + ". Le service BT tourne-t-il en foreground?", e);
+
             try {
-                startService(intentRight);
-                Log.d(TAG, "Intent envoyé pour bracelet DROIT (Type: " + selectedNotificationType + ")");
-            } catch (Exception e) {
-                Log.e(TAG, "Erreur lors du démarrage du service pour bracelet DROIT", e);
+                ContextCompat.startForegroundService(this, intent);
+                Log.d(TAG, "Tentative de démarrage en foreground du service pour bracelet " + macAddress);
+            } catch (Exception e2) {
+                Log.e(TAG, "Échec de la tentative de démarrage en foreground du service pour bracelet " + macAddress, e2);
             }
-        }, 150); // Augmentation légère du délai si nécessaire
 
-        // 4. Afficher le Toast
-        new Handler(Looper.getMainLooper()).post(() -> {
-            Toast.makeText(getApplicationContext(), "PRICE ALARM TRIGGERED!", Toast.LENGTH_LONG).show();
-        });
+        } catch (Exception e) {
+            Log.e(TAG, "Erreur générale lors du démarrage du service pour bracelet " + macAddress, e);
+        }
     }
-
 
 
     private Notification createNotification() {
         createNotificationChannel();
         Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this,
-                0, notificationIntent, PendingIntent.FLAG_IMMUTABLE);
+                0, notificationIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("BitVibe Alarm Service")
-                .setContentText("Checking for price alarm...")
+                .setContentTitle("BitVibe Alarme Active")
+                .setContentText("Surveillance du prix de la cryptomonnaie...")
                 .setSmallIcon(R.drawable.logo)
-                .setContentIntent(pendingIntent);
+                .setContentIntent(pendingIntent)
+                .setOngoing(true);
+
         return builder.build();
     }
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             CharSequence name = "BitVibe Alarm Channel";
-            String description = "Channel for BitVibe price alarm";
+            String description = "Notifications pour les alarmes de prix BitVibe";
             int importance = NotificationManager.IMPORTANCE_LOW;
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
             channel.setDescription(description);
+
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
+            if (notificationManager != null) {
+                notificationManager.createNotificationChannel(channel);
+            } else {
+                Log.e(TAG, "Impossible d'obtenir NotificationManager pour créer le canal.");
+            }
         }
     }
 }
