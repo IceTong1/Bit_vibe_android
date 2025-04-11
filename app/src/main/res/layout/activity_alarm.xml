@@ -93,17 +93,6 @@
 
 
     <Button
-        android:id="@+id/saveAlarmsButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
-        android:text="Save Alarms Settings"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/lowTriggerPriceEditText" />
-
-
-    <Button
         android:id="@+id/mainActivityButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -117,6 +106,6 @@
         android:text="Home"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/lowTriggerPriceEditText"
+        app:layout_constraintVertical_bias="0.8"/> </androidx.constraintlayout.widget.ConstraintLayout>

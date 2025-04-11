@@ -1,5 +1,4 @@
 
-
 package com.example.bitvibe;
 
 import static com.example.bitvibe.MainActivity.binanceApi;
@@ -12,6 +11,8 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.CompoundButton;
@@ -24,7 +25,6 @@ import androidx.activity.OnBackPressedDispatcher;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -44,7 +44,6 @@ public class AlarmActivity extends AppCompatActivity {
     private EditText lowTriggerPriceEditText;
     private Switch highAlarmSwitch;
     private Switch lowAlarmSwitch;
-    private Button saveAlarmsButton;
     private TextView currentPriceTextView;
     private SharedPreferences sharedPreferences;
 
@@ -52,14 +51,14 @@ public class AlarmActivity extends AppCompatActivity {
     private Runnable priceRunnable;
     private int priceUpdateIntervalSeconds = 5;
 
-
     private BroadcastReceiver alarmStateReceiver;
+    private boolean isLoading = false;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_alarm);
-
         setTitle(getString(R.string.title_activity_alarm));
 
         Button backButton = findViewById(R.id.mainActivityButton);
@@ -74,28 +73,13 @@ public class AlarmActivity extends AppCompatActivity {
         lowTriggerPriceEditText = findViewById(R.id.lowTriggerPriceEditText);
         highAlarmSwitch = findViewById(R.id.highAlarmSwitch);
         lowAlarmSwitch = findViewById(R.id.lowAlarmSwitch);
-        saveAlarmsButton = findViewById(R.id.saveAlarmsButton);
         currentPriceTextView = findViewById(R.id.currentPriceTextView);
 
         priceUpdateIntervalSeconds = sharedPreferences.getInt("refresh_interval", 5);
 
         loadAlarmSettings();
-
-        saveAlarmsButton.setOnClickListener(v -> saveAlarmSettings());
-
-        highAlarmSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            saveSwitchState(PREF_IS_HIGH_ALARM_ON, isChecked);
-            updateSwitchText(highAlarmSwitch, isChecked);
-            Log.d(TAG, "High Alarm state changed to: " + (isChecked ? "ON" : "OFF"));
-            manageAlarmCheckService();
-        });
-
-        lowAlarmSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            saveSwitchState(PREF_IS_LOW_ALARM_ON, isChecked);
-            updateSwitchText(lowAlarmSwitch, isChecked);
-            Log.d(TAG, "Low Alarm state changed to: " + (isChecked ? "ON" : "OFF"));
-            manageAlarmCheckService();
-        });
+        setupListeners();
+        setupAlarmStateReceiver();
 
         priceRunnable = new Runnable() {
             @Override
@@ -105,13 +89,86 @@ public class AlarmActivity extends AppCompatActivity {
                 priceHandler.postDelayed(this, priceUpdateIntervalSeconds * 1000L);
             }
         };
+    }
 
-        setupAlarmStateReceiver();
+    private void setupListeners() {
+
+        highAlarmSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isLoading) return;
+            handleSwitchToggle(highAlarmSwitch, highTriggerPriceEditText, PREF_IS_HIGH_ALARM_ON, PREF_HIGH_TRIGGER_PRICE, isChecked);
+        });
+
+        lowAlarmSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isLoading) return;
+            handleSwitchToggle(lowAlarmSwitch, lowTriggerPriceEditText, PREF_IS_LOW_ALARM_ON, PREF_LOW_TRIGGER_PRICE, isChecked);
+        });
+
+        highTriggerPriceEditText.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override public void afterTextChanged(Editable s) {
+                if (!isLoading && highAlarmSwitch.isChecked()) {
+                    Log.d(TAG, "High price text changed while alarm was ON. Disabling.");
+                    highAlarmSwitch.setChecked(false);
+                }
+            }
+        });
+
+        lowTriggerPriceEditText.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override public void afterTextChanged(Editable s) {
+                if (!isLoading && lowAlarmSwitch.isChecked()) {
+                    Log.d(TAG, "Low price text changed while alarm was ON. Disabling.");
+                    lowAlarmSwitch.setChecked(false);
+                }
+            }
+        });
+    }
+
+    private void handleSwitchToggle(Switch targetSwitch, EditText priceEditText, String prefIsOnKey, String prefPriceKey, boolean isChecked) {
+        if (isChecked) {
+            String priceStr = priceEditText.getText().toString();
+            double priceValue = -1;
+            boolean isValidPrice = false;
+
+            if (!priceStr.isEmpty()) {
+                try {
+                    priceValue = Double.parseDouble(priceStr);
+                    isValidPrice = true;
+                    priceEditText.setError(null);
+                } catch (NumberFormatException e) {
+                    isValidPrice = false;
+                    priceEditText.setError("Invalid number format");
+                }
+            } else {
+                priceEditText.setError("Price cannot be empty to activate");
+            }
+
+            if (isValidPrice) {
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+                editor.putBoolean(prefIsOnKey, true);
+                editor.putString(prefPriceKey, priceStr);
+                editor.apply();
+                updateSwitchText(targetSwitch, true);
+                manageAlarmCheckService();
+                Log.d(TAG, "Alarm " + prefIsOnKey + " activated with price " + priceStr);
+            } else {
+                targetSwitch.post(() -> targetSwitch.setChecked(false));
+                Toast.makeText(this, "Please enter a valid price before activating.", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            saveSwitchState(prefIsOnKey, false);
+            updateSwitchText(targetSwitch, false);
+            manageAlarmCheckService();
+            Log.d(TAG, "Alarm " + prefIsOnKey + " deactivated.");
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        isLoading = true;
         priceHandler.post(priceRunnable);
         Log.d(TAG, "Démarrage fetchCurrentPrice loop in onResume");
         loadAlarmSettings();
@@ -119,6 +176,7 @@ public class AlarmActivity extends AppCompatActivity {
         LocalBroadcastManager.getInstance(this).registerReceiver(alarmStateReceiver,
                 new IntentFilter(AlarmCheckService.ACTION_ALARM_STATE_CHANGED));
         Log.d(TAG, "Alarm state receiver registered");
+        isLoading = false;
     }
 
     @Override
@@ -126,11 +184,9 @@ public class AlarmActivity extends AppCompatActivity {
         super.onPause();
         priceHandler.removeCallbacks(priceRunnable);
         Log.d(TAG, "Arrêt fetchCurrentPrice loop in onPause");
-
         LocalBroadcastManager.getInstance(this).unregisterReceiver(alarmStateReceiver);
         Log.d(TAG, "Alarm state receiver unregistered");
     }
-
 
     private void setupAlarmStateReceiver() {
         alarmStateReceiver = new BroadcastReceiver() {
@@ -138,12 +194,12 @@ public class AlarmActivity extends AppCompatActivity {
             public void onReceive(Context context, Intent intent) {
                 if (intent != null && AlarmCheckService.ACTION_ALARM_STATE_CHANGED.equals(intent.getAction())) {
                     String alarmType = intent.getStringExtra(AlarmCheckService.EXTRA_ALARM_TYPE);
-                    boolean newState = intent.getBooleanExtra(AlarmCheckService.EXTRA_ALARM_STATE, false); // false par défaut
+                    boolean newState = intent.getBooleanExtra(AlarmCheckService.EXTRA_ALARM_STATE, false);
 
                     Log.d(TAG, "Received broadcast: Alarm " + alarmType + " state changed to " + newState);
 
-
                     runOnUiThread(() -> {
+                        isLoading = true;
                         if ("high".equals(alarmType) && !newState) {
                             highAlarmSwitch.setChecked(false);
                             updateSwitchText(highAlarmSwitch, false);
@@ -153,6 +209,7 @@ public class AlarmActivity extends AppCompatActivity {
                             updateSwitchText(lowAlarmSwitch, false);
                             Toast.makeText(AlarmActivity.this, "Low alarm was triggered and disabled.", Toast.LENGTH_SHORT).show();
                         }
+                        isLoading = false;
                     });
                 }
             }
@@ -161,91 +218,30 @@ public class AlarmActivity extends AppCompatActivity {
 
 
     private void loadAlarmSettings() {
+        isLoading = true;
+
         String highPriceStr = sharedPreferences.getString(PREF_HIGH_TRIGGER_PRICE, "");
         boolean isHighOn = sharedPreferences.getBoolean(PREF_IS_HIGH_ALARM_ON, false);
         highTriggerPriceEditText.setText(highPriceStr);
-        highAlarmSwitch.setOnCheckedChangeListener(null);
         highAlarmSwitch.setChecked(isHighOn);
         updateSwitchText(highAlarmSwitch, isHighOn);
-        highAlarmSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            saveSwitchState(PREF_IS_HIGH_ALARM_ON, isChecked);
-            updateSwitchText(highAlarmSwitch, isChecked);
-            Log.d(TAG, "High Alarm state changed to: " + (isChecked ? "ON" : "OFF"));
-            manageAlarmCheckService();
-        });
-
 
         String lowPriceStr = sharedPreferences.getString(PREF_LOW_TRIGGER_PRICE, "");
         boolean isLowOn = sharedPreferences.getBoolean(PREF_IS_LOW_ALARM_ON, false);
         lowTriggerPriceEditText.setText(lowPriceStr);
-        lowAlarmSwitch.setOnCheckedChangeListener(null);
         lowAlarmSwitch.setChecked(isLowOn);
         updateSwitchText(lowAlarmSwitch, isLowOn);
-        lowAlarmSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            saveSwitchState(PREF_IS_LOW_ALARM_ON, isChecked);
-            updateSwitchText(lowAlarmSwitch, isChecked);
-            Log.d(TAG, "Low Alarm state changed to: " + (isChecked ? "ON" : "OFF"));
-            manageAlarmCheckService();
-        });
-
 
         Log.d(TAG, "Settings loaded: HighPrice=" + highPriceStr + ", HighOn=" + isHighOn +
                 ", LowPrice=" + lowPriceStr + ", LowOn=" + isLowOn);
+
+        isLoading = false;
     }
 
     private void saveSwitchState(String key, boolean value) {
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putBoolean(key, value);
         editor.apply();
-    }
-
-    private void saveAlarmSettings() {
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        boolean formatError = false;
-
-        String highPriceStr = highTriggerPriceEditText.getText().toString();
-        if (!highPriceStr.isEmpty()) {
-            try {
-                Double.parseDouble(highPriceStr);
-                editor.putString(PREF_HIGH_TRIGGER_PRICE, highPriceStr);
-            } catch (NumberFormatException e) {
-                highTriggerPriceEditText.setError("Invalid number format");
-                formatError = true;
-            }
-        } else {
-            editor.remove(PREF_HIGH_TRIGGER_PRICE);
-        }
-
-        String lowPriceStr = lowTriggerPriceEditText.getText().toString();
-        if (!lowPriceStr.isEmpty()) {
-            try {
-                Double.parseDouble(lowPriceStr);
-                editor.putString(PREF_LOW_TRIGGER_PRICE, lowPriceStr);
-            } catch (NumberFormatException e) {
-                lowTriggerPriceEditText.setError("Invalid number format");
-                formatError = true;
-            }
-        } else {
-            editor.remove(PREF_LOW_TRIGGER_PRICE);
-        }
-
-        editor.putBoolean(PREF_IS_HIGH_ALARM_ON, highAlarmSwitch.isChecked());
-        editor.putBoolean(PREF_IS_LOW_ALARM_ON, lowAlarmSwitch.isChecked());
-
-        if (!formatError) {
-            editor.apply();
-            Toast.makeText(this, "Alarm settings saved", Toast.LENGTH_SHORT).show();
-            Log.d(TAG, "Alarm settings saved. HighPrice=" + highPriceStr + ", LowPrice=" + lowPriceStr +
-                    ", HighOn=" + highAlarmSwitch.isChecked() + ", LowOn=" + lowAlarmSwitch.isChecked());
-
-            highTriggerPriceEditText.setError(null);
-            lowTriggerPriceEditText.setError(null);
-
-            manageAlarmCheckService();
-
-        } else {
-            Toast.makeText(this, "Please fix errors before saving", Toast.LENGTH_SHORT).show();
-        }
     }
 
     private void updateSwitchText(Switch targetSwitch, boolean isChecked) {
@@ -270,7 +266,6 @@ public class AlarmActivity extends AppCompatActivity {
                     String symbol = response.body().getSymbol();
                     if (currentPriceTextView != null) {
                         runOnUiThread(() -> currentPriceTextView.setText(String.format(java.util.Locale.US, "%.2f", currentPrice)));
-
                     }
                 } else {
                     Log.e(TAG, "fetchCurrentPrice - Erreur API : " + response.code());
