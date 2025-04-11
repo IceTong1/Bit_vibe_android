@@ -51,11 +51,14 @@
         </activity>
 
         <activity
-            android:name=".bracelet.BraceletConnectActivity"
+            android:name=".BraceletConnectActivity"
             android:exported="false"
-            android:label="@string/title_activity_bracelet_connect"/> <activity
-        android:name=".AlarmActivity"
-        android:exported="false"
-        android:label="@string/title_activity_alarm" /> </application>
+            android:label="@string/title_activity_bracelet_connect"/>
+
+        <activity
+            android:name=".AlarmActivity"
+            android:exported="false"
+            android:label="@string/title_activity_alarm" />
+    </application>
 
 </manifest>
