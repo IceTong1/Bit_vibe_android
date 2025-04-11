@@ -5,16 +5,29 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="16dp"
-    tools:context=".AlarmActivity"> <TextView
-    android:id="@+id/currentPriceLabelTextView"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:layout_marginTop="32dp"
-    android:text="Current Price:"
-    android:textSize="18sp"
-    android:textStyle="bold"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toTopOf="parent" />
+    tools:context=".AlarmActivity">
+
+    <TextView
+        android:id="@+id/currentCryptoSymbolTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="SYMBOL"
+        android:textAppearance="@style/TextAppearance.AppCompat.Large"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/currentPriceLabelTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Current Price:"
+        android:textSize="18sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/currentCryptoSymbolTextView" />
 
     <TextView
         android:id="@+id/currentPriceTextView"
@@ -25,44 +38,70 @@
         android:textSize="18sp"
         app:layout_constraintBaseline_toBaselineOf="@+id/currentPriceLabelTextView"
         app:layout_constraintStart_toEndOf="@+id/currentPriceLabelTextView" />
-    <TextView
-        android:id="@+id/triggerPriceLabel"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="32dp" android:text="Trigger Price:"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/currentPriceLabelTextView" /> <EditText
-        android:id="@+id/triggerPriceEditText"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:hint="Enter trigger price"
-        android:inputType="numberDecimal"
-        android:minHeight="48dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/triggerPriceLabel" />
 
-    <Button
-        android:id="@+id/setAlarmButton"
+    <TextView
+        android:id="@+id/highTriggerPriceLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
-        android:text="Set Alarm"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:text="High Price Alarm (Notify Left):"
+        android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/triggerPriceEditText"/> <Switch
-        android:id="@+id/onOFFSwitch"
-        android:layout_width="wrap_content"
+        app:layout_constraintTop_toBottomOf="@+id/currentPriceLabelTextView" />
+
+    <EditText
+        android:id="@+id/highTriggerPriceEditText"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="40dp"
+        android:hint="Enter price threshold"
+        android:inputType="numberDecimal"
+        android:minHeight="48dp"
+        app:layout_constraintEnd_toStartOf="@+id/highAlarmSwitch"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/highTriggerPriceLabel" />
+
+    <Switch
+        android:id="@+id/highAlarmSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
         android:minHeight="48dp"
         android:text="OFF"
-        android:textAppearance="@style/TextAppearance.AppCompat.Body1"
-        android:textSize="24sp"
+        app:layout_constraintBottom_toBottomOf="@+id/highTriggerPriceEditText"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/highTriggerPriceEditText" />
+
+
+    <TextView
+        android:id="@+id/lowTriggerPriceLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="Low Price Alarm (Notify Right):"
+        android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/setAlarmButton" />
+        app:layout_constraintTop_toBottomOf="@+id/highTriggerPriceEditText" />
+
+    <EditText
+        android:id="@+id/lowTriggerPriceEditText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="Enter price threshold"
+        android:inputType="numberDecimal"
+        android:minHeight="48dp"
+        app:layout_constraintEnd_toStartOf="@+id/lowAlarmSwitch"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/lowTriggerPriceLabel" />
+
+    <Switch
+        android:id="@+id/lowAlarmSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:minHeight="48dp"
+        android:text="OFF"
+        app:layout_constraintBottom_toBottomOf="@+id/lowTriggerPriceEditText"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/lowTriggerPriceEditText" />
+
 
     <Button
         android:id="@+id/mainActivityButton"
@@ -78,6 +117,9 @@
         android:text="Home"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/lowTriggerPriceEditText"
+        app:layout_constraintVertical_bias="0.8"/>
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>

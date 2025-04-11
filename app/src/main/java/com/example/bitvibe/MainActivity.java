@@ -1,3 +1,5 @@
+
+
 package com.example.bitvibe;
 
 import android.Manifest;
@@ -48,6 +50,10 @@ public class MainActivity extends AppCompatActivity {
     private static boolean isServiceRunning = false;
     private SharedPreferences prefs;
 
+    private static final String PREF_IS_HIGH_ALARM_ON = "is_high_alarm_on";
+    private static final String PREF_IS_LOW_ALARM_ON = "is_low_alarm_on";
+
+
     private static final String LEFT_BRACELET_MAC = "BC:57:29:13:FA:DE";
     private static final String RIGHT_BRACELET_MAC = "BC:57:29:13:FA:E0";
     private static final int RING_TYPE_VIBRATE = 4;
@@ -71,12 +77,10 @@ public class MainActivity extends AppCompatActivity {
             mBluetoothService = null;
         }
     };
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         bitcoinPriceTextView = findViewById(R.id.bitcoinPriceTextView);
 
         prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE);
@@ -87,16 +91,17 @@ public class MainActivity extends AppCompatActivity {
         setupRetrofit();
         initializeLoop();
 
-        Intent serviceIntent = new Intent(this, BluetoothConnectionService.class);
+
+        Intent btServiceIntent = new Intent(this, BluetoothConnectionService.class);
         try {
             Log.d(TAG, "Tentative de démarrage en foreground du BluetoothConnectionService.");
-            ContextCompat.startForegroundService(this, serviceIntent);
+            ContextCompat.startForegroundService(this, btServiceIntent);
         } catch (Exception e) {
-            Log.e(TAG, "Impossible de démarrer le service en foreground, tentative avec startService", e);
-            startService(serviceIntent);
+            Log.e(TAG, "Impossible de démarrer le service BT en foreground, tentative avec startService", e);
+            startService(btServiceIntent);
         }
         Log.d(TAG, "Tentative de liaison au BluetoothConnectionService.");
-        bindService(serviceIntent, mBluetoothConnection, Context.BIND_AUTO_CREATE);
+        bindService(btServiceIntent, mBluetoothConnection, Context.BIND_AUTO_CREATE);
     }
 
     @Override
@@ -124,7 +129,7 @@ public class MainActivity extends AppCompatActivity {
                 mBluetoothService = null;
                 Log.d(TAG, "Délié du BluetoothConnectionService.");
             } catch (IllegalArgumentException e) {
-                Log.w(TAG, "Service non lié ou déjà délié lors de onStop.", e);
+                Log.w(TAG, "Service BT non lié ou déjà délié lors de onStop.", e);
             }
         }
     }
@@ -136,12 +141,12 @@ public class MainActivity extends AppCompatActivity {
             handler.removeCallbacks(runnable);
             Log.d(TAG, "onDestroy: Boucle de récupération du prix arrêtée.");
         }
-        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
-        if (isAlarmOn && isServiceRunning) {
+
+        if (isServiceRunning) {
             Intent serviceIntent = new Intent(this, AlarmCheckService.class);
             stopService(serviceIntent);
             isServiceRunning = false;
-            Log.d(TAG, "AlarmCheckService arrêté depuis MainActivity onDestroy");
+            Log.d(TAG, "AlarmCheckService arrêté explicitement depuis MainActivity onDestroy");
         }
     }
 
@@ -170,8 +175,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
     private void fetchBitcoinPrice() {
-        if (binanceApi == null) return;
+        if (binanceApi == null) {
+            Log.e(TAG, "fetchBitcoinPrice: binanceApi is null.");
+            return;
+        }
         String selectedCrypto = prefs.getString("crypto", "DOGEUSDT");
         Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice(selectedCrypto);
 
@@ -182,53 +191,67 @@ public class MainActivity extends AppCompatActivity {
                     double currentPrice = response.body().getPrice();
                     String symbol = response.body().getSymbol();
                     Log.d(TAG, symbol + " : currentPrice = " + currentPrice + ", lastPrice = " + lastPrice);
+
                     if (bitcoinPriceTextView != null) {
-                        bitcoinPriceTextView.setText(String.format(symbol + " : %.2f", currentPrice));
+                        runOnUiThread(() -> bitcoinPriceTextView.setText(String.format(symbol + " : %.2f", currentPrice)));
                     }
+
                     float tolerancePercentage = prefs.getFloat("tolerance_percentage", 0.01f);
                     if (lastPrice != -1) {
                         double percentageChange = ((currentPrice - lastPrice) / lastPrice) * 100;
                         if (Math.abs(percentageChange) > tolerancePercentage) {
                             if (mBound && mBluetoothService != null) {
+
                                 if (percentageChange > 0) {
-                                    Log.d(TAG, "Déclenchement vibration (Hausse) sur bracelet DROIT");
+                                    Log.d(TAG, "Vibration (Hausse > tolérance) sur bracelet DROIT");
                                     mBluetoothService.ringBeacon(RIGHT_BRACELET_MAC, RING_TYPE_VIBRATE);
-                                } else {
-                                    Log.d(TAG, "Déclenchement vibration (Baisse) sur bracelet GAUCHE");
+                                }
+
+                                else {
+                                    Log.d(TAG, "Vibration (Baisse > tolérance) sur bracelet GAUCHE");
                                     mBluetoothService.ringBeacon(LEFT_BRACELET_MAC, RING_TYPE_VIBRATE);
                                 }
                             } else {
-                                Log.w(TAG, "Service Bluetooth non lié, impossible de faire vibrer les bracelets.");
+                                Log.w(TAG, "Service Bluetooth non lié, impossible de vibrer sur tolérance.");
                             }
-                            Log.d(TAG, (percentageChange > 0 ? "Hausse" : "Baisse") + " détectée (" + String.format(java.util.Locale.US, "%.2f", percentageChange) + "%)");
+                            Log.d(TAG, (percentageChange > 0 ? "Hausse" : "Baisse") + " > tolérance détectée (" + String.format(java.util.Locale.US, "%.2f", percentageChange) + "%)");
                             lastPrice = currentPrice;
                         } else {
-                            Log.d(TAG, "Prix stable (" + String.format(java.util.Locale.US, "%.2f", percentageChange) + "%)");
+                            Log.d(TAG, "Prix stable (variation < tolérance: " + String.format(java.util.Locale.US, "%.2f", percentageChange) + "%)");
+
                         }
                     } else {
                         lastPrice = currentPrice;
                     }
                 } else {
-                    Log.e(TAG, "Erreur API : " + response.code());
-                    if (bitcoinPriceTextView != null) bitcoinPriceTextView.setText("Erreur API : " + response.code());
+                    Log.e(TAG, "Erreur API (fetchBitcoinPrice): " + response.code());
+                    if (bitcoinPriceTextView != null) {
+                        final int code = response.code();
+                        runOnUiThread(() -> bitcoinPriceTextView.setText("Erreur API : " + code));
+                    }
                 }
             }
 
             @Override
             public void onFailure(@NonNull Call<BinancePriceResponse> call, @NonNull Throwable t) {
-                Log.e(TAG, "Échec requête API : " + t.getMessage(), t);
-                if (bitcoinPriceTextView != null) bitcoinPriceTextView.setText("API Connection Failed");
+                Log.e(TAG, "Échec requête API (fetchBitcoinPrice): " + t.getMessage(), t);
+                if (bitcoinPriceTextView != null) {
+                    runOnUiThread(() -> bitcoinPriceTextView.setText("API Connection Failed"));
+                }
             }
         });
     }
 
+
     private void initializeDefaultPrefs() {
         SharedPreferences.Editor editor = prefs.edit();
+        // Conserver les prefs existantes
         if (!prefs.contains("refresh_interval")) editor.putInt("refresh_interval", 5);
-        if (!prefs.contains("notification_type")) editor.putInt("notification_type", 6);
+        if (!prefs.contains("notification_type")) editor.putInt("notification_type", 6); // 6 = LED + VIB
         if (!prefs.contains("currency")) editor.putString("currency", "USD");
         if (!prefs.contains("language")) editor.putString("language", "fr");
         if (!prefs.contains("tolerance_percentage")) editor.putFloat("tolerance_percentage", 0.01f);
+
         editor.apply();
     }
 
@@ -238,14 +261,19 @@ public class MainActivity extends AppCompatActivity {
         String currency = prefs.getString("currency", "N/A");
         String language = prefs.getString("language", "N/A");
         float tolerancePercentage = prefs.getFloat("tolerance_percentage", -1.0f);
-        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
-        Log.d(TAG, "VALEURS CHARGEES: refresh=" + minInterval + "\n"
-                + ", notificationType=" + notificationType + "\n"
-                + ", currency=" + currency + "\n"
-                + ", lang=" + language + "\n"
-                + ", tolerance=" + tolerancePercentage + "\n"
-                + ", alarmOn=" + isAlarmOn);
+
+        boolean isHighAlarmOn = prefs.getBoolean(PREF_IS_HIGH_ALARM_ON, false);
+        boolean isLowAlarmOn = prefs.getBoolean(PREF_IS_LOW_ALARM_ON, false);
+
+        Log.d(TAG, "VALEURS CHARGEES: refresh=" + minInterval
+                + ", notificationType=" + notificationType
+                + ", currency=" + currency
+                + ", lang=" + language
+                + ", tolerance=" + tolerancePercentage
+                + ", isHighAlarmOn=" + isHighAlarmOn
+                + ", isLowAlarmOn=" + isLowAlarmOn);
     }
+
 
     private void setupButtons() {
         Button settingsButton = findViewById(R.id.settingsButton);
@@ -265,11 +293,13 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+
     private void checkAndRequestBluetoothPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED ||
                     ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED ||
                     ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
                 ActivityCompat.requestPermissions(this,
                         new String[]{
                                 Manifest.permission.BLUETOOTH_CONNECT,
@@ -298,8 +328,8 @@ public class MainActivity extends AppCompatActivity {
     private void initializeLoop() {
         if (!this.asBeenInitialized) {
             this.asBeenInitialized = true;
-            Log.d(TAG, "Initialisation boucle prix");
-            minInterval = prefs.getInt("refresh_interval", 5);
+            Log.d(TAG, "Initialisation boucle affichage prix / vibration %");
+            minInterval = prefs.getInt("refresh_interval", 5); // Lire l'intervalle
             runnable = new Runnable() {
                 @Override
                 public void run() {
@@ -312,16 +342,23 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
     private void manageAlarmCheckService() {
-        boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
+
+        boolean isHighAlarmOn = prefs.getBoolean(PREF_IS_HIGH_ALARM_ON, false);
+        boolean isLowAlarmOn = prefs.getBoolean(PREF_IS_LOW_ALARM_ON, false);
+
+        boolean shouldServiceRun = isHighAlarmOn || isLowAlarmOn;
+
         Intent serviceIntent = new Intent(this, AlarmCheckService.class);
 
-        if (isAlarmOn) {
+        if (shouldServiceRun) {
+
             if (!isServiceRunning) {
                 try {
                     ContextCompat.startForegroundService(this, serviceIntent);
                     isServiceRunning = true;
-                    Log.d(TAG, "AlarmCheckService démarré depuis MainActivity onResume");
+                    Log.d(TAG, "AlarmCheckService démarré (au moins une alarme est ON)");
                 } catch (Exception e) {
                     Log.e(TAG, "Erreur démarrage AlarmCheckService", e);
                 }
@@ -333,7 +370,7 @@ public class MainActivity extends AppCompatActivity {
             if (isServiceRunning) {
                 stopService(serviceIntent);
                 isServiceRunning = false;
-                Log.d(TAG, "AlarmCheckService arrêté depuis MainActivity onResume (alarme OFF)");
+                Log.d(TAG, "AlarmCheckService arrêté (les deux alarmes sont OFF)");
             } else {
                 Log.d(TAG, "AlarmCheckService déjà arrêté.");
             }

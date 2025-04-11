@@ -1,11 +1,11 @@
 <resources>
     <string name="app_name">BitVibe</string>
 
-    <string name="title_activity_settings">Paramètres</string>
+    <string name="title_activity_settings">Settings</string>
 
-    <string name="title_activity_bracelet_connect">Connexion Bracelets</string>
+    <string name="title_activity_bracelet_connect">Connect Bracelets</string>
 
-    <string name="title_activity_alarm">Alarme</string>
+    <string name="title_activity_alarm">Alarm</string>
 
     <string-array name="currency_array">
         <item>USD</item>
