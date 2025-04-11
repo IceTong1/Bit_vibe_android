@@ -1,7 +1,6 @@
 package com.example.bitvibe;
 
 import android.Manifest;
-import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -23,11 +22,8 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import com.example.bitvibe.bracelet.BraceletConnectActivity; // Pour les constantes MAC si besoin
-import com.kkmcn.kbeaconlib2.KBConnState;
-import com.kkmcn.kbeaconlib2.KBeacon;
+import com.example.bitvibe.bracelet.BraceletConnectActivity;
 
 import java.util.Map;
 
@@ -39,14 +35,11 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity {
 
-    // --- Constantes et Variables Existantes ---
     private static final String TAG = "MainActivity";
     private static final int REQUEST_BLUETOOTH_PERMISSIONS = 1;
     public static BinanceApi binanceApi;
 
     private TextView bitcoinPriceTextView;
-    private TextView statusBraceletLeftTextView;
-    private TextView statusBraceletRightTextView;
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable runnable;
     private double lastPrice = -1;
@@ -55,20 +48,13 @@ public class MainActivity extends AppCompatActivity {
     private static boolean isServiceRunning = false;
     private SharedPreferences prefs;
 
-    // --- Constantes pour les Bracelets et Vibration ---
     private static final String LEFT_BRACELET_MAC = "BC:57:29:13:FA:DE";
     private static final String RIGHT_BRACELET_MAC = "BC:57:29:13:FA:E0";
-    // Ajout de la constante pour la vibration (basée sur BraceletConnectActivity)
-    private static final int RING_TYPE_VIBRATE = 4; // Ajouté pour la vibration
+    private static final int RING_TYPE_VIBRATE = 4;
 
-    // --- Variables pour le Service Bluetooth ---
     private BluetoothConnectionService mBluetoothService;
     private boolean mBound = false;
-    private KBConnState mLeftBraceletState = KBConnState.Disconnected;
-    private KBConnState mRightBraceletState = KBConnState.Disconnected;
 
-
-    // --- ServiceConnection pour BluetoothConnectionService ---
     private final ServiceConnection mBluetoothConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName className, IBinder service) {
@@ -76,7 +62,6 @@ public class MainActivity extends AppCompatActivity {
             mBluetoothService = binder.getService();
             mBound = true;
             Log.d(TAG, "BluetoothConnectionService connecté");
-            updateUiWithCurrentState(); // Mettre à jour l'UI avec les états actuels
         }
 
         @Override
@@ -84,41 +69,6 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "BluetoothConnectionService déconnecté");
             mBound = false;
             mBluetoothService = null;
-            mLeftBraceletState = KBConnState.Disconnected;
-            mRightBraceletState = KBConnState.Disconnected;
-            updateIndividualStatusTextViews(); // Mettre à jour l'UI
-        }
-    };
-
-    // --- BroadcastReceiver pour les états de connexion Bluetooth ---
-    private final BroadcastReceiver mConnStateReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            final String action = intent.getAction();
-            if (BluetoothConnectionService.ACTION_CONN_STATE_CHANGED.equals(action)) {
-                String mac = intent.getStringExtra(BluetoothConnectionService.EXTRA_CONN_STATE_MAC);
-                int stateOrdinal = intent.getIntExtra(BluetoothConnectionService.EXTRA_CONN_STATE, KBConnState.Disconnected.ordinal());
-                KBConnState state = KBConnState.values()[stateOrdinal];
-
-
-                Log.d(TAG, "MainActivity: Broadcast reçu pour " + mac + " -> " + state);
-                boolean stateChanged = false;
-                if (LEFT_BRACELET_MAC.equalsIgnoreCase(mac)) {
-                    if (mLeftBraceletState != state) {
-                        mLeftBraceletState = state;
-                        stateChanged = true;
-                    }
-                } else if (RIGHT_BRACELET_MAC.equalsIgnoreCase(mac)) {
-                    if (mRightBraceletState != state) {
-                        mRightBraceletState = state;
-                        stateChanged = true;
-                    }
-                }
-
-                if(stateChanged){
-                    updateIndividualStatusTextViews();
-                }
-            }
         }
     };
 
@@ -126,17 +76,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        // --- Initialisation UI ---
-        bitcoinPriceTextView = findViewById(R.id.bitcoinPriceTextView);
-        try {
-            statusBraceletLeftTextView = findViewById(R.id.status_bracelet_left);
-            statusBraceletRightTextView = findViewById(R.id.status_bracelet_right);
-        } catch (Exception e) {
-            Log.e(TAG, "Erreur: TextView(s) de statut de bracelet non trouvé(s) dans activity_main.xml.", e);
-            statusBraceletLeftTextView = null;
-            statusBraceletRightTextView = null;
-        }
 
+        bitcoinPriceTextView = findViewById(R.id.bitcoinPriceTextView);
 
         prefs = getSharedPreferences("BitVibePrefs", MODE_PRIVATE);
         initializeDefaultPrefs();
@@ -146,54 +87,45 @@ public class MainActivity extends AppCompatActivity {
         setupRetrofit();
         initializeLoop();
 
-
         Intent serviceIntent = new Intent(this, BluetoothConnectionService.class);
         try {
+            Log.d(TAG, "Tentative de démarrage en foreground du BluetoothConnectionService.");
             ContextCompat.startForegroundService(this, serviceIntent);
         } catch (Exception e) {
-            Log.e(TAG, "Impossible de démarrer le service en foreground", e);
+            Log.e(TAG, "Impossible de démarrer le service en foreground, tentative avec startService", e);
             startService(serviceIntent);
         }
+        Log.d(TAG, "Tentative de liaison au BluetoothConnectionService.");
         bindService(serviceIntent, mBluetoothConnection, Context.BIND_AUTO_CREATE);
-        Log.d(TAG, "Tentative de démarrage et de liaison au BluetoothConnectionService.");
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        Log.d(TAG, "onResume appelé.");
         minInterval = prefs.getInt("refresh_interval", 5);
-        manageAlarmCheckService(); // Vérifie et démarre/arrête le service d'alarme si nécessaire
-
-
-        IntentFilter filter = new IntentFilter(BluetoothConnectionService.ACTION_CONN_STATE_CHANGED);
-        LocalBroadcastManager.getInstance(this).registerReceiver(mConnStateReceiver, filter);
-        Log.d(TAG, "BroadcastReceiver Bluetooth enregistré.");
-
-
-        if (mBound) {
-            updateUiWithCurrentState();
-        } else {
-            mLeftBraceletState = KBConnState.Disconnected;
-            mRightBraceletState = KBConnState.Disconnected;
-            updateIndividualStatusTextViews();
-        }
+        manageAlarmCheckService();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mConnStateReceiver);
-        Log.d(TAG, "BroadcastReceiver Bluetooth désenregistré.");
+        Log.d(TAG, "onPause appelé.");
     }
 
     @Override
     protected void onStop() {
         super.onStop();
+        Log.d(TAG, "onStop appelé.");
         if (mBound) {
-            unbindService(mBluetoothConnection);
-            mBound = false;
-            mBluetoothService = null;
-            Log.d(TAG, "Délié du BluetoothConnectionService.");
+            try {
+                unbindService(mBluetoothConnection);
+                mBound = false;
+                mBluetoothService = null;
+                Log.d(TAG, "Délié du BluetoothConnectionService.");
+            } catch (IllegalArgumentException e) {
+                Log.w(TAG, "Service non lié ou déjà délié lors de onStop.", e);
+            }
         }
     }
 
@@ -238,12 +170,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
-
     private void fetchBitcoinPrice() {
         if (binanceApi == null) return;
-        String selectedCrypto = prefs.getString("crypto", "DOGEUSDT"); // Default to DOGEUSDT if not set
-        Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice(selectedCrypto); // Pass the symbol to the API call
+        String selectedCrypto = prefs.getString("crypto", "DOGEUSDT");
+        Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice(selectedCrypto);
 
         call.enqueue(new Callback<BinancePriceResponse>() {
             @Override
@@ -253,37 +183,30 @@ public class MainActivity extends AppCompatActivity {
                     String symbol = response.body().getSymbol();
                     Log.d(TAG, symbol + " : currentPrice = " + currentPrice + ", lastPrice = " + lastPrice);
                     if (bitcoinPriceTextView != null) {
-                        bitcoinPriceTextView.setText(String.format(symbol + " : %.2f", currentPrice)); // Affichage formaté
+                        bitcoinPriceTextView.setText(String.format(symbol + " : %.2f", currentPrice));
                     }
                     float tolerancePercentage = prefs.getFloat("tolerance_percentage", 0.01f);
                     if (lastPrice != -1) {
                         double percentageChange = ((currentPrice - lastPrice) / lastPrice) * 100;
                         if (Math.abs(percentageChange) > tolerancePercentage) {
-                            // --- IMPLÉMENTATION DES TODOS ---
-                            if (mBound && mBluetoothService != null) { // Vérifier si le service est lié
+                            if (mBound && mBluetoothService != null) {
                                 if (percentageChange > 0) {
-                                    // Hausse -> faire vibrer le bracelet droit
                                     Log.d(TAG, "Déclenchement vibration (Hausse) sur bracelet DROIT");
                                     mBluetoothService.ringBeacon(RIGHT_BRACELET_MAC, RING_TYPE_VIBRATE);
                                 } else {
-                                    // Baisse -> faire vibrer le bracelet gauche
                                     Log.d(TAG, "Déclenchement vibration (Baisse) sur bracelet GAUCHE");
                                     mBluetoothService.ringBeacon(LEFT_BRACELET_MAC, RING_TYPE_VIBRATE);
                                 }
                             } else {
                                 Log.w(TAG, "Service Bluetooth non lié, impossible de faire vibrer les bracelets.");
                             }
-
-
                             Log.d(TAG, (percentageChange > 0 ? "Hausse" : "Baisse") + " détectée (" + String.format(java.util.Locale.US, "%.2f", percentageChange) + "%)");
-                            lastPrice = currentPrice; // Mettre à jour lastPrice SEULEMENT si changement significatif détecté
+                            lastPrice = currentPrice;
                         } else {
                             Log.d(TAG, "Prix stable (" + String.format(java.util.Locale.US, "%.2f", percentageChange) + "%)");
-                            // Optionnel: Mettre à jour lastPrice même si stable
-                            // lastPrice = currentPrice;
                         }
                     } else {
-                        lastPrice = currentPrice; // Initialiser lastPrice la première fois
+                        lastPrice = currentPrice;
                     }
                 } else {
                     Log.e(TAG, "Erreur API : " + response.code());
@@ -299,12 +222,10 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-
-
     private void initializeDefaultPrefs() {
         SharedPreferences.Editor editor = prefs.edit();
         if (!prefs.contains("refresh_interval")) editor.putInt("refresh_interval", 5);
-        if (!prefs.contains("vibration_intensity")) editor.putInt("vibration_intensity", 2);
+        if (!prefs.contains("notification_type")) editor.putInt("notification_type", 6);
         if (!prefs.contains("currency")) editor.putString("currency", "USD");
         if (!prefs.contains("language")) editor.putString("language", "fr");
         if (!prefs.contains("tolerance_percentage")) editor.putFloat("tolerance_percentage", 0.01f);
@@ -313,13 +234,13 @@ public class MainActivity extends AppCompatActivity {
 
     private void logLoadedPrefs() {
         minInterval = prefs.getInt("refresh_interval", -1);
-        int intensity = prefs.getInt("vibration_intensity", -1);
+        int notificationType = prefs.getInt("notification_type", -1);
         String currency = prefs.getString("currency", "N/A");
         String language = prefs.getString("language", "N/A");
         float tolerancePercentage = prefs.getFloat("tolerance_percentage", -1.0f);
         boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
         Log.d(TAG, "VALEURS CHARGEES: refresh=" + minInterval + "\n"
-                + ", intensity=" + intensity + "\n"
+                + ", notificationType=" + notificationType + "\n"
                 + ", currency=" + currency + "\n"
                 + ", lang=" + language + "\n"
                 + ", tolerance=" + tolerancePercentage + "\n"
@@ -378,11 +299,13 @@ public class MainActivity extends AppCompatActivity {
         if (!this.asBeenInitialized) {
             this.asBeenInitialized = true;
             Log.d(TAG, "Initialisation boucle prix");
+            minInterval = prefs.getInt("refresh_interval", 5);
             runnable = new Runnable() {
                 @Override
                 public void run() {
                     fetchBitcoinPrice();
-                    handler.postDelayed(this, minInterval * 1000L);
+                    int currentInterval = prefs.getInt("refresh_interval", 5);
+                    handler.postDelayed(this, currentInterval * 1000L);
                 }
             };
             handler.post(runnable);
@@ -393,7 +316,6 @@ public class MainActivity extends AppCompatActivity {
         boolean isAlarmOn = prefs.getBoolean("is_alarm_on", false);
         Intent serviceIntent = new Intent(this, AlarmCheckService.class);
 
-        // Démarrer seulement si l'alarme est activée et que le service n'est pas déjà en cours
         if (isAlarmOn) {
             if (!isServiceRunning) {
                 try {
@@ -407,7 +329,6 @@ public class MainActivity extends AppCompatActivity {
                 Log.d(TAG, "AlarmCheckService déjà en cours.");
             }
         }
-        // Arrêter seulement si l'alarme est désactivée et que le service est en cours
         else {
             if (isServiceRunning) {
                 stopService(serviceIntent);
@@ -419,65 +340,4 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
-    /**
-     * Met à jour les états locaux et l'UI en interrogeant le service.
-     */
-    private void updateUiWithCurrentState() {
-        if (mBound && mBluetoothService != null) {
-            Log.d(TAG, "Mise à jour UI avec état actuel du service");
-            mLeftBraceletState = mBluetoothService.getBeaconState(LEFT_BRACELET_MAC);
-            mRightBraceletState = mBluetoothService.getBeaconState(RIGHT_BRACELET_MAC);
-            updateIndividualStatusTextViews();
-        } else {
-            Log.w(TAG, "Impossible de mettre à jour l'UI, service non lié");
-            mLeftBraceletState = KBConnState.Disconnected;
-            mRightBraceletState = KBConnState.Disconnected;
-            updateIndividualStatusTextViews();
-        }
-    }
-
-
-    /**
-     * Met à jour les TextViews affichant l'état individuel des bracelets.
-     */
-    private void updateIndividualStatusTextViews() {
-        runOnUiThread(() -> {
-            if (statusBraceletLeftTextView != null) {
-                statusBraceletLeftTextView.setText(getStateString(mLeftBraceletState));
-                // Optionnel: Changer couleur selon état
-                // statusBraceletLeftTextView.setTextColor(getStateColor(mLeftBraceletState));
-            } else {
-                Log.w(TAG,"statusBraceletLeftTextView est null");
-            }
-
-            if (statusBraceletRightTextView != null) {
-                statusBraceletRightTextView.setText(getStateString(mRightBraceletState));
-                // Optionnel: Changer couleur selon état
-                // statusBraceletRightTextView.setTextColor(getStateColor(mRightBraceletState));
-            } else {
-                Log.w(TAG,"statusBraceletRightTextView est null");
-            }
-        });
-    }
-
-    /**
-     * Convertit l'état de connexion en une chaîne de caractères lisible.
-     */
-    private String getStateString(KBConnState state) {
-        if (state == null) return "Inconnu";
-        switch (state) {
-            case Connected:
-                return "Connecté";
-            case Connecting:
-                return "Connexion...";
-            case Disconnecting:
-                return "Déconnexion...";
-            case Disconnected:
-            default:
-                return "Déconnecté";
-        }
-    }
-
-
-} // Fin de la classe MainActivity
+}

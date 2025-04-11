@@ -3,92 +3,53 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
 
     <TextView
         android:id="@+id/bitcoinPriceTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="100dp"
-        android:text="Prix du Bitcoin : Chargement..."
+        android:layout_marginTop="180dp"
+        android:text="Prix : Chargement..."
         android:textSize="24sp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
-        android:id="@+id/label_bracelet_left"
+    <Button
+        android:id="@+id/alarmButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:layout_marginStart="16dp"
-        android:text="Bracelet Gauche:"
-        android:textStyle="bold"
+        android:layout_marginBottom="16dp"
+        android:text="Alarme"
+        app:layout_constraintBottom_toTopOf="@+id/settingsButton"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/bitcoinPriceTextView" />
-
-    <TextView
-        android:id="@+id/status_bracelet_left"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:text="Vérification..."
-        app:layout_constraintStart_toEndOf="@+id/label_bracelet_left"
-        app:layout_constraintTop_toTopOf="@+id/label_bracelet_left"
-        app:layout_constraintBottom_toBottomOf="@+id/label_bracelet_left"/>
-
-    <TextView
-        android:id="@+id/label_bracelet_right"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:layout_marginStart="16dp"
-        android:text="Bracelet Droit:"
-        android:textStyle="bold"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/label_bracelet_left" />
-
-    <TextView
-        android:id="@+id/status_bracelet_right"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:text="Vérification..."
-        app:layout_constraintStart_toEndOf="@+id/label_bracelet_right"
-        app:layout_constraintTop_toTopOf="@+id/label_bracelet_right"
-        app:layout_constraintBottom_toBottomOf="@+id/label_bracelet_right"/>
-
+        app:layout_constraintTop_toBottomOf="@+id/bitcoinPriceTextView"
+        app:layout_constraintVertical_bias="0.949" />
 
     <Button
         android:id="@+id/settingsButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:text="Settings"
+        android:layout_marginBottom="28dp"
+        android:text="Paramètres"
         app:layout_constraintBottom_toTopOf="@+id/braceletConnectButton"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintStart_toStartOf="parent" />
 
     <Button
         android:id="@+id/braceletConnectButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="32dp"
+        android:layout_marginBottom="56dp"
         android:text="Connexion Bracelets"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.497"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <Button
-        android:id="@+id/alarmButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="14dp"
-        android:text="alarm"
-        app:layout_constraintBottom_toTopOf="@+id/settingsButton"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
