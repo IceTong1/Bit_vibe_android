@@ -1,5 +1,3 @@
-
-
 package com.example.bitvibe;
 
 import static com.example.bitvibe.MainActivity.binanceApi;
@@ -47,6 +45,9 @@ public class AlarmCheckService extends Service {
     private static final String PREF_LOW_TRIGGER_PRICE = "low_trigger_price";
     private static final String PREF_IS_LOW_ALARM_ON = "is_low_alarm_on";
 
+    private static final String PREF_VOLATILITY_THRESHOLD = "volatility_threshold";
+    private static final String PREF_IS_VOLATILITY_ALARM_ON = "is_volatility_alarm_on";
+    private static final String PREF_VOLATILITY_REFERENCE_PRICE = "volatility_reference_price";
 
     public static final String ACTION_ALARM_STATE_CHANGED = "com.example.bitvibe.ALARM_STATE_CHANGED";
     public static final String EXTRA_ALARM_TYPE = "com.example.bitvibe.EXTRA_ALARM_TYPE";
@@ -104,7 +105,8 @@ public class AlarmCheckService extends Service {
             public void onResponse(Call<BinancePriceResponse> call, Response<BinancePriceResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     double currentPrice = response.body().getPrice();
-                    evaluateAlarmConditions(currentPrice, prefs);
+                    evaluateThresholdAlarmConditions(currentPrice, prefs);
+                    evaluateVolatilityAlarmCondition(currentPrice, prefs);
                 } else {
                     Log.e(TAG, "Erreur API lors de la récupération du prix: " + response.code());
                 }
@@ -117,7 +119,7 @@ public class AlarmCheckService extends Service {
         });
     }
 
-    private void evaluateAlarmConditions(double currentPrice, SharedPreferences prefs) {
+    private void evaluateThresholdAlarmConditions(double currentPrice, SharedPreferences prefs) {
         boolean highAlarmTriggered = false;
         boolean lowAlarmTriggered = false;
 
@@ -129,7 +131,6 @@ public class AlarmCheckService extends Service {
 
         SharedPreferences.Editor editor = prefs.edit();
 
-
         if (isHighAlarmOn && !highPriceStr.isEmpty()) {
             try {
                 double highTriggerPrice = Double.parseDouble(highPriceStr);
@@ -139,7 +140,6 @@ public class AlarmCheckService extends Service {
                     showToastNotification("High Alarm: Price above " + highTriggerPrice);
                     editor.putBoolean(PREF_IS_HIGH_ALARM_ON, false);
                     highAlarmTriggered = true;
-                    // --- AJOUT : Envoyer broadcast ---
                     sendAlarmStateBroadcast("high", false);
                 }
             } catch (NumberFormatException e) {
@@ -159,22 +159,78 @@ public class AlarmCheckService extends Service {
                     showToastNotification("Low Alarm: Price below " + lowTriggerPrice);
                     editor.putBoolean(PREF_IS_LOW_ALARM_ON, false);
                     lowAlarmTriggered = true;
-
                     sendAlarmStateBroadcast("low", false);
                 }
             } catch (NumberFormatException e) {
                 Log.e(TAG, "Error parsing low trigger price: " + lowPriceStr, e);
                 editor.putBoolean(PREF_IS_LOW_ALARM_ON, false);
                 lowAlarmTriggered = true;
-                sendAlarmStateBroadcast("low", false); // Envoyer aussi en cas d'erreur de prix
+                sendAlarmStateBroadcast("low", false);
             }
         }
 
         if (highAlarmTriggered || lowAlarmTriggered) {
             editor.apply();
-            Log.d(TAG, "Alarm states updated in preferences after trigger.");
+            Log.d(TAG, "Threshold alarm states updated in preferences after trigger.");
         }
     }
+
+    private void evaluateVolatilityAlarmCondition(double currentPrice, SharedPreferences prefs) {
+        boolean isVolatilityAlarmOn = prefs.getBoolean(PREF_IS_VOLATILITY_ALARM_ON, false);
+
+        if (!isVolatilityAlarmOn) {
+
+            return;
+        }
+
+        float volatilityThreshold = prefs.getFloat(PREF_VOLATILITY_THRESHOLD, -1.0f);
+        String referencePriceStr = prefs.getString(PREF_VOLATILITY_REFERENCE_PRICE, null);
+        int selectedNotificationType = prefs.getInt(PREF_NOTIFICATION_TYPE, DEFAULT_NOTIFICATION_TYPE);
+
+
+        if (volatilityThreshold <= 0 || referencePriceStr == null) {
+            Log.w(TAG, "Volatility check skipped: Invalid threshold ("+volatilityThreshold+") or missing reference price.");
+            return;
+        }
+
+        try {
+            double referencePrice = Double.parseDouble(referencePriceStr);
+            if (referencePrice <= 0) {
+                Log.w(TAG, "Volatility check skipped: Invalid reference price ("+referencePrice+").");
+                return;
+            }
+
+            double percentageChange = ((currentPrice - referencePrice) / referencePrice) * 100.0;
+
+            Log.d(TAG, "Volatility Check: Current=" + currentPrice + ", Ref=" + referencePrice + ", Change=" + String.format("%.2f", percentageChange) + "%, Threshold=" + volatilityThreshold + "%");
+
+            if (Math.abs(percentageChange) > volatilityThreshold) {
+                Log.i(TAG, "VOLATILITY ALARM TRIGGERED! Change=" + String.format("%.2f", percentageChange) + "% > Threshold=" + volatilityThreshold + "%");
+
+                if (percentageChange > 0) {
+                    Log.d(TAG, "Volatility UP -> Notifying LEFT bracelet.");
+                    sendBraceletNotification(LEFT_BRACELET_MAC, selectedNotificationType);
+                    showToastNotification("Volatility Alarm: Price UP " + String.format("%.2f", percentageChange) + "%");
+                } else {
+                    Log.d(TAG, "Volatility DOWN -> Notifying RIGHT bracelet.");
+                    sendBraceletNotification(RIGHT_BRACELET_MAC, selectedNotificationType);
+                    showToastNotification("Volatility Alarm: Price DOWN " + String.format("%.2f", percentageChange) + "%");
+                }
+
+
+
+
+            }
+
+        } catch (NumberFormatException e) {
+            Log.e(TAG, "Error parsing volatility reference price: " + referencePriceStr, e);
+
+
+
+
+        }
+    }
+
 
     private void sendAlarmStateBroadcast(String alarmType, boolean newState) {
         Intent intent = new Intent(ACTION_ALARM_STATE_CHANGED);
@@ -186,7 +242,7 @@ public class AlarmCheckService extends Service {
 
     private void sendBraceletNotification(String macAddress, int ringType) {
         if (macAddress == null || macAddress.isEmpty()) {
-            Log.w(TAG, "Tentative d'envoi de notification sans adresse MAC.");
+            Log.w(TAG, "Attempting to send notification without MAC address.");
             return;
         }
         Intent intent = new Intent(this, BluetoothConnectionService.class);
@@ -195,17 +251,17 @@ public class AlarmCheckService extends Service {
         intent.putExtra(BluetoothConnectionService.EXTRA_RING_TYPE, ringType);
         try {
             startService(intent);
-            Log.d(TAG, "Intent envoyé pour notifier bracelet " + macAddress + " (Type: " + ringType + ")");
+            Log.d(TAG, "Intent sent to notify bracelet " + macAddress + " (Type: " + ringType + ")");
         } catch (IllegalStateException e) {
-            Log.e(TAG, "Erreur (IllegalStateException) lors du démarrage du service BT pour " + macAddress, e);
+            Log.e(TAG, "Error (IllegalStateException) starting BT service for " + macAddress, e);
             try {
                 ContextCompat.startForegroundService(this, intent);
-                Log.d(TAG, "Tentative de démarrage en foreground du service BT pour " + macAddress);
+                Log.d(TAG, "Attempting foreground start for BT service for " + macAddress);
             } catch (Exception e2) {
-                Log.e(TAG, "Échec de la tentative de démarrage en foreground pour " + macAddress, e2);
+                Log.e(TAG, "Failed foreground start attempt for " + macAddress, e2);
             }
         } catch (Exception e) {
-            Log.e(TAG, "Erreur générale lors du démarrage du service BT pour " + macAddress, e);
+            Log.e(TAG, "General error starting BT service for " + macAddress, e);
         }
     }
 

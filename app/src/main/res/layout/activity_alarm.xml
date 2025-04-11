@@ -11,9 +11,9 @@
         android:id="@+id/currentCryptoSymbolTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="8dp"
         android:text="SYMBOL"
-        android:textAppearance="@style/TextAppearance.AppCompat.Large"
+        android:textAppearance="@style/TextAppearance.AppCompat.Medium"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -23,9 +23,9 @@
         android:id="@+id/currentPriceLabelTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="4dp"
         android:text="Current Price:"
-        android:textSize="18sp"
+        android:textSize="16sp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/currentCryptoSymbolTextView" />
 
@@ -35,7 +35,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:text="Loading..."
-        android:textSize="18sp"
+        android:textSize="16sp"
         app:layout_constraintBaseline_toBaselineOf="@+id/currentPriceLabelTextView"
         app:layout_constraintStart_toEndOf="@+id/currentPriceLabelTextView" />
 
@@ -43,7 +43,7 @@
         android:id="@+id/highTriggerPriceLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="16dp"
         android:text="High Price Alarm (Notify Left):"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
@@ -75,7 +75,7 @@
         android:id="@+id/lowTriggerPriceLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="16dp"
         android:text="Low Price Alarm (Notify Right):"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
@@ -102,24 +102,71 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@+id/lowTriggerPriceEditText" />
 
+    <View
+        android:id="@+id/dividerVolatility"
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:layout_marginTop="16dp"
+        android:background="?android:attr/listDivider"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/lowTriggerPriceEditText" />
+
+    <TextView
+        android:id="@+id/volatilityAlarmLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Volatility Alarm (% Change):"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/dividerVolatility" />
+
+    <EditText
+        android:id="@+id/volatilityThresholdEditText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="Enter % threshold (e.g., 0.5)"
+        android:inputType="numberDecimal"
+        android:minHeight="48dp"
+        app:layout_constraintEnd_toStartOf="@+id/volatilityAlarmSwitch"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/volatilityAlarmLabel" />
+
+    <Switch
+        android:id="@+id/volatilityAlarmSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:minHeight="48dp"
+        android:text="OFF"
+        app:layout_constraintBottom_toBottomOf="@+id/volatilityThresholdEditText"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/volatilityThresholdEditText"/>
+
+    <Button
+        android:id="@+id/setVolatilityReferenceButton"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Activate &amp; Set Ref. Price Now"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/volatilityThresholdEditText"/>
 
     <Button
         android:id="@+id/mainActivityButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="32dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="16dp"
         android:minWidth="125dp"
         android:minHeight="48dp"
-        android:paddingStart="24dp"
-        android:paddingEnd="24dp"
-        android:paddingTop="12dp"
-        android:paddingBottom="12dp"
         android:text="Home"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/lowTriggerPriceEditText"
-        app:layout_constraintVertical_bias="0.8"/>
+        app:layout_constraintTop_toBottomOf="@+id/setVolatilityReferenceButton"
+        app:layout_constraintVertical_bias="1.0"/>
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

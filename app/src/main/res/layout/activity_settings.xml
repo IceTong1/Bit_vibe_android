@@ -5,14 +5,17 @@
     android:id="@+id/linearLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".SettingsActivity"> <TextView
-    android:id="@+id/textView"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:layout_marginStart="16dp"
-    android:layout_marginTop="24dp" android:text="@string/refresh_interval"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toTopOf="parent" />
+    tools:context=".SettingsActivity">
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="24dp"
+        android:text="@string/refresh_interval"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <EditText
         android:id="@+id/refresh_interval_edittext"
@@ -21,39 +24,21 @@
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:inputType="number"
-        android:hint="5" app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView" />
-
-    <TextView
-        android:id="@+id/textView2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp" android:text="@string/tolerance_percentage"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/refresh_interval_edittext" />
-
-    <EditText
-        android:id="@+id/tolerance_percentage_edittext"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:inputType="numberDecimal"
-        android:hint="@string/tolerance_percentage_hint"
+        android:minHeight="48dp"
+        android:hint="5"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView2" />
+        app:layout_constraintTop_toBottomOf="@+id/textView" />
 
     <TextView
         android:id="@+id/textView3"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp" android:text="@string/currency"
+        android:layout_marginTop="16dp"
+        android:text="@string/currency"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tolerance_percentage_edittext" />
+        app:layout_constraintTop_toBottomOf="@+id/refresh_interval_edittext" />
 
     <Spinner
         android:id="@+id/currency_spinner"
@@ -61,7 +46,8 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:minHeight="48dp" app:layout_constraintEnd_toEndOf="parent"
+        android:minHeight="48dp"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textView3" />
 
@@ -70,48 +56,61 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp" android:text="@string/notification_type"
+        android:layout_marginTop="16dp"
+        android:text="@string/notification_type"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/currency_spinner" /> <Spinner
+        app:layout_constraintTop_toBottomOf="@+id/currency_spinner" />
+
+    <Spinner
         android:id="@+id/notification_type_spinner"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:minHeight="48dp" app:layout_constraintEnd_toEndOf="parent"
+        android:minHeight="48dp"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textViewNotificationType" />
+
     <TextView
         android:id="@+id/textView5"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp" android:text="@string/language"
+        android:layout_marginTop="16dp"
+        android:text="@string/language"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/notification_type_spinner" /> <Spinner
+        app:layout_constraintTop_toBottomOf="@+id/notification_type_spinner" />
+
+    <Spinner
         android:id="@+id/language_spinner"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:minHeight="48dp" app:layout_constraintEnd_toEndOf="parent"
+        android:minHeight="48dp"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textView5" />
-
 
     <TextView
         android:id="@+id/textView8"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp" android:text="Crypto:" app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/language_spinner" /> <Spinner
+        android:layout_marginTop="16dp"
+        android:text="Crypto:"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/language_spinner" />
+
+    <Spinner
         android:id="@+id/crypto_spinner"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:minHeight="48dp" android:spinnerMode="dropdown"
+        android:minHeight="48dp"
+        android:spinnerMode="dropdown"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textView8" />
@@ -119,9 +118,13 @@
 
     <Button
         android:id="@+id/mainActivityButton"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_marginBottom="32dp"
-        android:minWidth="125dp" android:minHeight="48dp" android:paddingStart="24dp" android:paddingEnd="24dp"
+        android:minWidth="125dp"
+        android:minHeight="48dp"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
         android:paddingTop="12dp"
         android:paddingBottom="12dp"
         android:text="Home"

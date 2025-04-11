@@ -1,5 +1,3 @@
-
-
 package com.example.bitvibe;
 
 import android.Manifest;
@@ -44,7 +42,6 @@ public class MainActivity extends AppCompatActivity {
     private TextView bitcoinPriceTextView;
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable runnable;
-    private double lastPrice = -1;
     private int minInterval;
     private boolean asBeenInitialized = false;
     private static boolean isServiceRunning = false;
@@ -52,11 +49,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String PREF_IS_HIGH_ALARM_ON = "is_high_alarm_on";
     private static final String PREF_IS_LOW_ALARM_ON = "is_low_alarm_on";
-
-
-    private static final String LEFT_BRACELET_MAC = "BC:57:29:13:FA:DE";
-    private static final String RIGHT_BRACELET_MAC = "BC:57:29:13:FA:E0";
-    private static final int RING_TYPE_VIBRATE = 4;
+    private static final String PREF_IS_VOLATILITY_ALARM_ON = "is_volatility_alarm_on";
 
     private BluetoothConnectionService mBluetoothService;
     private boolean mBound = false;
@@ -190,39 +183,11 @@ public class MainActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     double currentPrice = response.body().getPrice();
                     String symbol = response.body().getSymbol();
-                    Log.d(TAG, symbol + " : currentPrice = " + currentPrice + ", lastPrice = " + lastPrice);
 
                     if (bitcoinPriceTextView != null) {
-                        runOnUiThread(() -> bitcoinPriceTextView.setText(String.format(symbol + " : %.2f", currentPrice)));
+                        runOnUiThread(() -> bitcoinPriceTextView.setText(String.format(symbol + " : %.3f", currentPrice)));
                     }
 
-                    float tolerancePercentage = prefs.getFloat("tolerance_percentage", 0.01f);
-                    if (lastPrice != -1) {
-                        double percentageChange = ((currentPrice - lastPrice) / lastPrice) * 100;
-                        if (Math.abs(percentageChange) > tolerancePercentage) {
-                            if (mBound && mBluetoothService != null) {
-
-                                if (percentageChange > 0) {
-                                    Log.d(TAG, "Vibration (Hausse > tolérance) sur bracelet DROIT");
-                                    mBluetoothService.ringBeacon(RIGHT_BRACELET_MAC, RING_TYPE_VIBRATE);
-                                }
-
-                                else {
-                                    Log.d(TAG, "Vibration (Baisse > tolérance) sur bracelet GAUCHE");
-                                    mBluetoothService.ringBeacon(LEFT_BRACELET_MAC, RING_TYPE_VIBRATE);
-                                }
-                            } else {
-                                Log.w(TAG, "Service Bluetooth non lié, impossible de vibrer sur tolérance.");
-                            }
-                            Log.d(TAG, (percentageChange > 0 ? "Hausse" : "Baisse") + " > tolérance détectée (" + String.format(java.util.Locale.US, "%.2f", percentageChange) + "%)");
-                            lastPrice = currentPrice;
-                        } else {
-                            Log.d(TAG, "Prix stable (variation < tolérance: " + String.format(java.util.Locale.US, "%.2f", percentageChange) + "%)");
-
-                        }
-                    } else {
-                        lastPrice = currentPrice;
-                    }
                 } else {
                     Log.e(TAG, "Erreur API (fetchBitcoinPrice): " + response.code());
                     if (bitcoinPriceTextView != null) {
@@ -245,13 +210,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void initializeDefaultPrefs() {
         SharedPreferences.Editor editor = prefs.edit();
-        // Conserver les prefs existantes
         if (!prefs.contains("refresh_interval")) editor.putInt("refresh_interval", 5);
-        if (!prefs.contains("notification_type")) editor.putInt("notification_type", 6); // 6 = LED + VIB
+        if (!prefs.contains("notification_type")) editor.putInt("notification_type", 6);
         if (!prefs.contains("currency")) editor.putString("currency", "USD");
         if (!prefs.contains("language")) editor.putString("language", "fr");
-        if (!prefs.contains("tolerance_percentage")) editor.putFloat("tolerance_percentage", 0.01f);
-
         editor.apply();
     }
 
@@ -260,18 +222,17 @@ public class MainActivity extends AppCompatActivity {
         int notificationType = prefs.getInt("notification_type", -1);
         String currency = prefs.getString("currency", "N/A");
         String language = prefs.getString("language", "N/A");
-        float tolerancePercentage = prefs.getFloat("tolerance_percentage", -1.0f);
-
         boolean isHighAlarmOn = prefs.getBoolean(PREF_IS_HIGH_ALARM_ON, false);
         boolean isLowAlarmOn = prefs.getBoolean(PREF_IS_LOW_ALARM_ON, false);
+        boolean isVolatilityAlarmOn = prefs.getBoolean(PREF_IS_VOLATILITY_ALARM_ON, false);
 
         Log.d(TAG, "VALEURS CHARGEES: refresh=" + minInterval
                 + ", notificationType=" + notificationType
                 + ", currency=" + currency
                 + ", lang=" + language
-                + ", tolerance=" + tolerancePercentage
                 + ", isHighAlarmOn=" + isHighAlarmOn
-                + ", isLowAlarmOn=" + isLowAlarmOn);
+                + ", isLowAlarmOn=" + isLowAlarmOn
+                + ", isVolatilityAlarmOn=" + isVolatilityAlarmOn);
     }
 
 
@@ -328,8 +289,8 @@ public class MainActivity extends AppCompatActivity {
     private void initializeLoop() {
         if (!this.asBeenInitialized) {
             this.asBeenInitialized = true;
-            Log.d(TAG, "Initialisation boucle affichage prix / vibration %");
-            minInterval = prefs.getInt("refresh_interval", 5); // Lire l'intervalle
+            Log.d(TAG, "Initialisation boucle affichage prix");
+            minInterval = prefs.getInt("refresh_interval", 5);
             runnable = new Runnable() {
                 @Override
                 public void run() {
@@ -344,16 +305,15 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void manageAlarmCheckService() {
-
         boolean isHighAlarmOn = prefs.getBoolean(PREF_IS_HIGH_ALARM_ON, false);
         boolean isLowAlarmOn = prefs.getBoolean(PREF_IS_LOW_ALARM_ON, false);
+        boolean isVolatilityAlarmOn = prefs.getBoolean(PREF_IS_VOLATILITY_ALARM_ON, false);
 
-        boolean shouldServiceRun = isHighAlarmOn || isLowAlarmOn;
+        boolean shouldServiceRun = isHighAlarmOn || isLowAlarmOn || isVolatilityAlarmOn;
 
         Intent serviceIntent = new Intent(this, AlarmCheckService.class);
 
         if (shouldServiceRun) {
-
             if (!isServiceRunning) {
                 try {
                     ContextCompat.startForegroundService(this, serviceIntent);
@@ -370,7 +330,7 @@ public class MainActivity extends AppCompatActivity {
             if (isServiceRunning) {
                 stopService(serviceIntent);
                 isServiceRunning = false;
-                Log.d(TAG, "AlarmCheckService arrêté (les deux alarmes sont OFF)");
+                Log.d(TAG, "AlarmCheckService arrêté (toutes alarmes sont OFF)");
             } else {
                 Log.d(TAG, "AlarmCheckService déjà arrêté.");
             }
