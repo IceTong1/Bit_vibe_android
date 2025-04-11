@@ -118,7 +118,7 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
 
         mBeaconMgrForScan = KBeaconsMgr.sharedBeaconManager(this);
         if (mBeaconMgrForScan == null) {
-            showToast("Device does not support Bluetooth LE."); // Modifié
+            showToast("Device does not support Bluetooth LE.");
             finish();
             return;
         }
@@ -164,17 +164,17 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
         btnConnectLeft.setOnClickListener(v -> handleConnectButton(LEFT_BRACELET_MAC));
         btnConnectRight.setOnClickListener(v -> handleConnectButton(RIGHT_BRACELET_MAC));
 
-        btnBeepLeft.setOnClickListener(v -> triggerRingCommand(LEFT_BRACELET_MAC, "Left", RING_TYPE_BEEP)); // Modifié
-        btnLedLeft.setOnClickListener(v -> triggerRingCommand(LEFT_BRACELET_MAC, "Left", RING_TYPE_LED)); // Modifié
-        btnVibrateLeft.setOnClickListener(v -> triggerRingCommand(LEFT_BRACELET_MAC, "Left", RING_TYPE_VIBRATE)); // Modifié
-        btnLedVibrateLeft.setOnClickListener(v -> triggerRingCommand(LEFT_BRACELET_MAC, "Left", RING_TYPE_LED | RING_TYPE_VIBRATE)); // Modifié
-        btnStopLeft.setOnClickListener(v -> triggerRingCommand(LEFT_BRACELET_MAC, "Left", RING_TYPE_STOP)); // Modifié
+        btnBeepLeft.setOnClickListener(v -> triggerRingCommand(LEFT_BRACELET_MAC, "Left", RING_TYPE_BEEP));
+        btnLedLeft.setOnClickListener(v -> triggerRingCommand(LEFT_BRACELET_MAC, "Left", RING_TYPE_LED));
+        btnVibrateLeft.setOnClickListener(v -> triggerRingCommand(LEFT_BRACELET_MAC, "Left", RING_TYPE_VIBRATE));
+        btnLedVibrateLeft.setOnClickListener(v -> triggerRingCommand(LEFT_BRACELET_MAC, "Left", RING_TYPE_LED | RING_TYPE_VIBRATE));
+        btnStopLeft.setOnClickListener(v -> triggerRingCommand(LEFT_BRACELET_MAC, "Left", RING_TYPE_STOP));
 
-        btnBeepRight.setOnClickListener(v -> triggerRingCommand(RIGHT_BRACELET_MAC, "Right", RING_TYPE_BEEP)); // Modifié
-        btnLedRight.setOnClickListener(v -> triggerRingCommand(RIGHT_BRACELET_MAC, "Right", RING_TYPE_LED)); // Modifié
-        btnVibrateRight.setOnClickListener(v -> triggerRingCommand(RIGHT_BRACELET_MAC, "Right", RING_TYPE_VIBRATE)); // Modifié
-        btnLedVibrateRight.setOnClickListener(v -> triggerRingCommand(RIGHT_BRACELET_MAC, "Right", RING_TYPE_LED | RING_TYPE_VIBRATE)); // Modifié
-        btnStopRight.setOnClickListener(v -> triggerRingCommand(RIGHT_BRACELET_MAC, "Right", RING_TYPE_STOP)); // Modifié
+        btnBeepRight.setOnClickListener(v -> triggerRingCommand(RIGHT_BRACELET_MAC, "Right", RING_TYPE_BEEP));
+        btnLedRight.setOnClickListener(v -> triggerRingCommand(RIGHT_BRACELET_MAC, "Right", RING_TYPE_LED));
+        btnVibrateRight.setOnClickListener(v -> triggerRingCommand(RIGHT_BRACELET_MAC, "Right", RING_TYPE_VIBRATE));
+        btnLedVibrateRight.setOnClickListener(v -> triggerRingCommand(RIGHT_BRACELET_MAC, "Right", RING_TYPE_LED | RING_TYPE_VIBRATE));
+        btnStopRight.setOnClickListener(v -> triggerRingCommand(RIGHT_BRACELET_MAC, "Right", RING_TYPE_STOP));
     }
 
     @Override
@@ -238,35 +238,35 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
 
         TextView statusTv = isLeft ? tvStatusLeft : tvStatusRight;
         Button connectBtn = isLeft ? btnConnectLeft : btnConnectRight;
-        String deviceLabel = isLeft ? "Left" : "Right"; // Modifié
+        String deviceLabel = isLeft ? "Left" : "Right";
 
         switch (state) {
             case Connected:
-                statusTv.setText("Connected"); // Modifié
+                statusTv.setText("Connected");
                 connectBtn.setEnabled(true);
-                connectBtn.setText("Disconnect " + deviceLabel); // Modifié
+                connectBtn.setText("Disconnect " + deviceLabel);
                 if (isLeft) setLeftButtonsEnabled(true); else setRightButtonsEnabled(true);
                 break;
             case Disconnected:
                 String reasonMsg;
-                if (reason == KBConnectionEvent.ConnManualDisconnecting) { reasonMsg = "Manual Disconn."; } // Modifié
-                else if (reason == KBConnectionEvent.ConnTimeout) { reasonMsg = "Fail: Timeout"; } // Modifié
-                else if (reason == KBConnectionEvent.ConnAuthFail) { reasonMsg = "Fail: Auth"; } // Modifié
-                else if (reason == KBConnectionEvent.ConnServiceNotSupport) { reasonMsg = "Fail: KKM Service not found";} // Modifié
-                else if (reason == KBConnectionEvent.ConnException) { reasonMsg = "Fail: BT Exception (" + reason + ")";} // Modifié
-                else { reasonMsg = "Disconnected (" + reason + ")"; } // Modifié
+                if (reason == KBConnectionEvent.ConnManualDisconnecting) { reasonMsg = "Manual Disconn."; }
+                else if (reason == KBConnectionEvent.ConnTimeout) { reasonMsg = "Fail: Timeout"; }
+                else if (reason == KBConnectionEvent.ConnAuthFail) { reasonMsg = "Fail: Auth"; }
+                else if (reason == KBConnectionEvent.ConnServiceNotSupport) { reasonMsg = "Fail: KKM Service not found";}
+                else if (reason == KBConnectionEvent.ConnException) { reasonMsg = "Fail: BT Exception (" + reason + ")";}
+                else { reasonMsg = "Disconnected (" + reason + ")"; }
                 statusTv.setText(reasonMsg);
                 connectBtn.setEnabled(true);
-                connectBtn.setText("Connect " + deviceLabel); // Modifié
+                connectBtn.setText("Connect " + deviceLabel);
                 if (isLeft) setLeftButtonsEnabled(false); else setRightButtonsEnabled(false);
                 break;
             case Connecting:
-                statusTv.setText("Connecting..."); // Modifié
+                statusTv.setText("Connecting...");
                 connectBtn.setEnabled(false);
                 if (isLeft) setLeftButtonsEnabled(false); else setRightButtonsEnabled(false);
                 break;
             case Disconnecting:
-                statusTv.setText("Disconnecting..."); // Modifié
+                statusTv.setText("Disconnecting...");
                 connectBtn.setEnabled(false);
                 if (isLeft) setLeftButtonsEnabled(false); else setRightButtonsEnabled(false);
                 break;
@@ -277,7 +277,7 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
     private void handleConnectButton(String macAddress) {
         if (!checkPermissionsAndBluetoothBeforeAction()) return;
         if (!mBound || mService == null) {
-            showToast("Service not connected."); // Modifié
+            showToast("Service not connected.");
             return;
         }
 
@@ -291,19 +291,19 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
             Log.d(TAG, "Requesting connect for " + macAddress);
             mService.connectToBeacon(macAddress, DEFAULT_PASSWORD);
         } else {
-            showToast("Operation already in progress for " + macAddress); // Modifié
+            showToast("Operation already in progress for " + macAddress);
         }
     }
 
     private void triggerRingCommand(String macAddress, String label, int ringType) {
         if (!mBound || mService == null) {
-            showToast("Service not connected."); // Modifié
+            showToast("Service not connected.");
             return;
         }
 
         KBConnState currentState = mService.getBeaconState(macAddress);
         if (currentState != KBConnState.Connected) {
-            showToast("Bracelet " + label + " not connected."); // Modifié
+            showToast("Bracelet " + label + " not connected.");
             return;
         }
 
@@ -320,18 +320,18 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
                 if (enableBtIntent.resolveActivity(getPackageManager()) != null) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
                             ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                        showToast("BLUETOOTH_CONNECT permission missing to enable BT."); // Modifié
+                        showToast("BLUETOOTH_CONNECT permission missing to enable BT.");
                         requestNeededPermissions();
                         return;
                     }
                     startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
                 } else {
-                    showToast("Could not request Bluetooth activation."); // Modifié
+                    showToast("Could not request Bluetooth activation.");
                     finish();
                 }
             } catch (SecurityException e) {
                 Log.e(TAG, "SecurityException during BT enable request", e);
-                showToast("Bluetooth permission missing to enable."); // Modifié
+                showToast("Bluetooth permission missing to enable.");
                 requestNeededPermissions();
             }
         } else {
@@ -390,10 +390,10 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
             }
 
             if (allGranted) {
-                showToast("Permissions granted."); // Modifié
+                showToast("Permissions granted.");
                 proceedAfterPermissions();
             } else {
-                showToast("Some necessary permissions for scan/connection are missing."); // Modifié
+                showToast("Some necessary permissions for scan/connection are missing.");
             }
         }
     }
@@ -405,7 +405,7 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
             if (resultCode == RESULT_OK) {
                 requestNeededPermissions();
             } else {
-                showToast("Bluetooth is required for this application."); // Modifié
+                showToast("Bluetooth is required for this application.");
                 finish();
             }
         }
@@ -418,23 +418,23 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
     private boolean checkPermissionsAndBluetoothBeforeAction() {
         if (mBeaconMgrForScan == null) return false;
         if (!mBeaconMgrForScan.isBluetoothEnable()) {
-            showToast("Please enable Bluetooth."); // Modifié
+            showToast("Please enable Bluetooth.");
             try {
                 Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
                 if (enableBtIntent.resolveActivity(getPackageManager()) != null) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
                             ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                        showToast("BLUETOOTH_CONNECT permission missing."); // Modifié
+                        showToast("BLUETOOTH_CONNECT permission missing.");
                         requestNeededPermissions();
                         return false;
                     }
                     startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
                 } else {
-                    showToast("Could not request Bluetooth activation."); // Modifié
+                    showToast("Could not request Bluetooth activation.");
                 }
             } catch (SecurityException e) {
                 Log.e(TAG, "SecurityException checking BT before action", e);
-                showToast("Bluetooth permission missing."); // Modifié
+                showToast("Bluetooth permission missing.");
                 requestNeededPermissions();
             }
             return false;
@@ -455,7 +455,7 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
         }
 
         if (!permissionsGranted) {
-            showToast("Missing required permissions."); // Modifié
+            showToast("Missing required permissions.");
             requestNeededPermissions();
             return false;
         }
@@ -473,15 +473,15 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
             int result = mBeaconMgrForScan.startScanning();
             if (result != 0) {
                 handleScanError(result);
-                btnScan.setText("Scan"); // Modifié
+                btnScan.setText("Scan");
             } else {
-                showToast("Scan started..."); // Modifié
-                btnScan.setText("Stop Scan"); // Modifié
+                showToast("Scan started...");
+                btnScan.setText("Stop Scan");
             }
         } catch (SecurityException e) {
             Log.e(TAG, "SecurityException starting scan", e);
-            showToast("Bluetooth permission missing for scan."); // Modifié
-            btnScan.setText("Scan"); // Modifié
+            showToast("Bluetooth permission missing for scan.");
+            btnScan.setText("Scan");
             requestNeededPermissions();
         }
     }
@@ -490,12 +490,12 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
         try {
             if (mBeaconMgrForScan != null && mBeaconMgrForScan.isScanning()) {
                 mBeaconMgrForScan.stopScanning();
-                showToast("Scan stopped."); // Modifié
-                btnScan.setText("Scan"); // Modifié
+                showToast("Scan stopped.");
+                btnScan.setText("Scan");
             }
         } catch (SecurityException e) {
             Log.e(TAG, "SecurityException stopping scan", e);
-            showToast("Bluetooth permission missing to stop scan."); // Modifié
+            showToast("Bluetooth permission missing to stop scan.");
         } catch (Exception e) { // Catch generic exception just in case
             Log.e(TAG, "Unknown error stopping scan", e);
         }
@@ -503,7 +503,7 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
 
     private void handleScanError(int result) {
         if (result == KBeaconsMgr.SCAN_ERROR_BLE_NOT_ENABLE) {
-            showToast("Please enable Bluetooth."); // Modifié
+            showToast("Please enable Bluetooth.");
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             if (enableBtIntent.resolveActivity(getPackageManager()) != null) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
@@ -512,16 +512,16 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
                     try { // Add try-catch for potential SecurityException here too
                         startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
                     } catch (SecurityException e) {
-                        showToast("Bluetooth permission missing."); // Modifié
+                        showToast("Bluetooth permission missing.");
                         requestNeededPermissions();
                     }
                 }
             }
         } else if (result == KBeaconsMgr.SCAN_ERROR_NO_PERMISSION) {
-            showToast("Missing permissions for scan."); // Modifié
+            showToast("Missing permissions for scan.");
             requestNeededPermissions();
         } else {
-            showToast("Unknown scan error: " + result); // Modifié
+            showToast("Unknown scan error: " + result);
         }
     }
 
@@ -543,14 +543,14 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
         Log.d(TAG, "Scan Delegate: Bluetooth state changed -> " + state);
         if (state == KBeaconsMgr.BLEStatePowerOff) {
             runOnUiThread(() -> {
-                showToast("Bluetooth disabled."); // Modifié
+                showToast("Bluetooth disabled.");
                 stopScan(); // Stop scan if BT is turned off
                 // Ensure UI reflects disconnected state if scan stops
                 updateStatusUi(LEFT_BRACELET_MAC, KBConnState.Disconnected, 0);
                 updateStatusUi(RIGHT_BRACELET_MAC, KBConnState.Disconnected, 0);
             });
         } else if (state == KBeaconsMgr.BLEStatePowerOn) {
-            runOnUiThread(() -> showToast("Bluetooth enabled.")); // Modifié
+            runOnUiThread(() -> showToast("Bluetooth enabled."));
         }
     }
 
@@ -558,8 +558,8 @@ public class BraceletConnectActivity extends AppCompatActivity implements KBeaco
     public void onScanFailed(int errorCode) {
         runOnUiThread(() -> {
             Log.e(TAG, "Scan failed: " + errorCode);
-            showToast("Scan failed: " + errorCode); // Modifié
-            btnScan.setText("Scan"); // Modifié
+            showToast("Scan failed: " + errorCode);
+            btnScan.setText("Scan");
         });
     }
 
