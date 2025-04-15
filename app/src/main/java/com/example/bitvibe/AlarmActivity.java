@@ -40,7 +40,6 @@ public class AlarmActivity extends AppCompatActivity {
     private static final String PREF_IS_VOLATILITY_ALARM_ON = "is_volatility_alarm_on";
     private static final String PREF_VOLATILITY_REFERENCE_PRICE = "volatility_reference_price";
 
-
     private static final String TAG = "AlarmActivity";
 
     private EditText highTriggerPriceEditText;
@@ -54,6 +53,8 @@ public class AlarmActivity extends AppCompatActivity {
     private EditText volatilityThresholdEditText;
     private Switch volatilityAlarmSwitch;
     private Button setVolatilityReferenceButton;
+    private TextView volatilityReferencePriceTextView;
+    private TextView volatilityCurrentChangeTextView;
 
 
     private Handler priceHandler = new Handler(Looper.getMainLooper());
@@ -88,7 +89,8 @@ public class AlarmActivity extends AppCompatActivity {
         volatilityThresholdEditText = findViewById(R.id.volatilityThresholdEditText);
         volatilityAlarmSwitch = findViewById(R.id.volatilityAlarmSwitch);
         setVolatilityReferenceButton = findViewById(R.id.setVolatilityReferenceButton);
-
+        volatilityReferencePriceTextView = findViewById(R.id.volatilityReferencePriceTextView);
+        volatilityCurrentChangeTextView = findViewById(R.id.volatilityCurrentChangeTextView);
 
         priceUpdateIntervalSeconds = sharedPreferences.getInt("refresh_interval", 5);
 
@@ -143,7 +145,7 @@ public class AlarmActivity extends AppCompatActivity {
             }
         });
 
-        setVolatilityReferenceButton.setOnClickListener(v -> activateAndSetVolatilityReference());
+        setVolatilityReferenceButton.setOnClickListener(v -> setVolatilityReferencePrice());
 
         volatilityAlarmSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isLoading) return;
@@ -202,10 +204,11 @@ public class AlarmActivity extends AppCompatActivity {
         if (isChecked) {
             String thresholdStr = volatilityThresholdEditText.getText().toString();
             boolean isValidThreshold = false;
+            float thresholdValue = -1f;
             if (!thresholdStr.isEmpty()) {
                 try {
-                    float threshold = Float.parseFloat(thresholdStr);
-                    if (threshold > 0) {
+                    thresholdValue = Float.parseFloat(thresholdStr);
+                    if (thresholdValue > 0) {
                         isValidThreshold = true;
                         volatilityThresholdEditText.setError(null);
                     } else {
@@ -220,10 +223,13 @@ public class AlarmActivity extends AppCompatActivity {
 
             if(isValidThreshold) {
                 if(sharedPreferences.contains(PREF_VOLATILITY_REFERENCE_PRICE)){
-                    saveSwitchState(PREF_IS_VOLATILITY_ALARM_ON, true);
+                    SharedPreferences.Editor editor = sharedPreferences.edit();
+                    editor.putBoolean(PREF_IS_VOLATILITY_ALARM_ON, true);
+                    editor.putFloat(PREF_VOLATILITY_THRESHOLD, thresholdValue);
+                    editor.apply();
                     updateSwitchText(volatilityAlarmSwitch, true);
                     manageAlarmCheckService();
-                    Log.d(TAG, "Volatility Alarm activated.");
+                    Log.d(TAG, "Volatility Alarm activated with threshold " + thresholdValue);
                 } else {
                     volatilityAlarmSwitch.post(() -> volatilityAlarmSwitch.setChecked(false));
                     Toast.makeText(this, "Set reference price first using the button.", Toast.LENGTH_SHORT).show();
@@ -241,32 +247,7 @@ public class AlarmActivity extends AppCompatActivity {
         }
     }
 
-    private void activateAndSetVolatilityReference() {
-        String thresholdStr = volatilityThresholdEditText.getText().toString();
-        float thresholdValue = -1f;
-        boolean isValidThreshold = false;
-
-        if (!thresholdStr.isEmpty()) {
-            try {
-                thresholdValue = Float.parseFloat(thresholdStr);
-                if (thresholdValue > 0) {
-                    isValidThreshold = true;
-                    volatilityThresholdEditText.setError(null);
-                } else {
-                    volatilityThresholdEditText.setError("Threshold must be positive");
-                }
-            } catch (NumberFormatException e) {
-                volatilityThresholdEditText.setError("Invalid number format");
-            }
-        } else {
-            volatilityThresholdEditText.setError("Enter % threshold first");
-        }
-
-        if (!isValidThreshold) {
-            Toast.makeText(this, "Please enter a valid positive threshold first.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
+    private void setVolatilityReferencePrice() {
         if (binanceApi == null) {
             Log.e(TAG, "Cannot set volatility reference: Binance API is null.");
             Toast.makeText(this, "API Error - Cannot fetch current price", Toast.LENGTH_SHORT).show();
@@ -275,28 +256,45 @@ public class AlarmActivity extends AppCompatActivity {
         String selectedCrypto = sharedPreferences.getString("crypto", "DOGEUSDT");
         Toast.makeText(this, "Fetching current price to set reference...", Toast.LENGTH_SHORT).show();
         Call<BinancePriceResponse> call = binanceApi.getBitcoinPrice(selectedCrypto);
-        final float finalThresholdValue = thresholdValue;
 
         call.enqueue(new Callback<BinancePriceResponse>() {
             @Override
             public void onResponse(Call<BinancePriceResponse> call, Response<BinancePriceResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     double currentPrice = response.body().getPrice();
+                    String currentPriceStr = String.valueOf(currentPrice);
                     SharedPreferences.Editor editor = sharedPreferences.edit();
-                    editor.putString(PREF_VOLATILITY_REFERENCE_PRICE, String.valueOf(currentPrice));
-                    editor.putFloat(PREF_VOLATILITY_THRESHOLD, finalThresholdValue);
-                    editor.putBoolean(PREF_IS_VOLATILITY_ALARM_ON, true);
+                    editor.putString(PREF_VOLATILITY_REFERENCE_PRICE, currentPriceStr);
                     editor.apply();
 
                     runOnUiThread(() -> {
-                        isLoading = true;
-                        volatilityAlarmSwitch.setChecked(true);
-                        updateSwitchText(volatilityAlarmSwitch, true);
-                        isLoading = false;
-                        Toast.makeText(AlarmActivity.this, "Volatility Alarm Activated\nRef. Price: " + String.format(java.util.Locale.US, "%.3f", currentPrice), Toast.LENGTH_LONG).show();
+                        volatilityReferencePriceTextView.setText(String.format(java.util.Locale.US, "%.3f", currentPrice));
+                        volatilityCurrentChangeTextView.setText("0.00%");
+                        Toast.makeText(AlarmActivity.this, "Reference Price Set: " + String.format(java.util.Locale.US, "%.3f", currentPrice), Toast.LENGTH_LONG).show();
+
+                        // Check if threshold is valid and switch should be ON now
+                        if (volatilityAlarmSwitch.isChecked()) {
+                            boolean isThresholdValid = false;
+                            String thresholdStr = volatilityThresholdEditText.getText().toString();
+                            if (!thresholdStr.isEmpty()) {
+                                try {
+                                    float threshold = Float.parseFloat(thresholdStr);
+                                    if (threshold > 0) isThresholdValid = true;
+                                } catch (NumberFormatException e) { /* ignore */ }
+                            }
+                            if (!isThresholdValid) {
+                                isLoading = true;
+                                volatilityAlarmSwitch.setChecked(false); // Turn off if threshold became invalid or empty
+                                saveSwitchState(PREF_IS_VOLATILITY_ALARM_ON, false);
+                                updateSwitchText(volatilityAlarmSwitch, false);
+                                manageAlarmCheckService();
+                                isLoading = false;
+                            } else {
+                                manageAlarmCheckService(); // Ensure service is running if needed
+                            }
+                        }
                     });
-                    manageAlarmCheckService();
-                    Log.d(TAG, "Volatility alarm activated. Ref price: " + currentPrice + ", Threshold: " + finalThresholdValue + "%");
+                    Log.d(TAG, "Volatility reference price set to: " + currentPrice);
 
                 } else {
                     Log.e(TAG, "API Error fetching price for volatility ref: " + response.code());
@@ -357,7 +355,7 @@ public class AlarmActivity extends AppCompatActivity {
                             updateSwitchText(lowAlarmSwitch, false);
                             Toast.makeText(AlarmActivity.this, "Low alarm was triggered and disabled.", Toast.LENGTH_SHORT).show();
                         }
-
+                        // Note: Volatility alarm does not disable itself automatically in the service
                         isLoading = false;
                     });
                 }
@@ -382,6 +380,8 @@ public class AlarmActivity extends AppCompatActivity {
 
         float volatilityThreshold = sharedPreferences.getFloat(PREF_VOLATILITY_THRESHOLD, 0.0f);
         boolean isVolatilityOn = sharedPreferences.getBoolean(PREF_IS_VOLATILITY_ALARM_ON, false);
+        String referencePriceStr = sharedPreferences.getString(PREF_VOLATILITY_REFERENCE_PRICE, null);
+
         if (volatilityThreshold > 0) {
             volatilityThresholdEditText.setText(String.valueOf(volatilityThreshold));
         } else {
@@ -390,9 +390,22 @@ public class AlarmActivity extends AppCompatActivity {
         volatilityAlarmSwitch.setChecked(isVolatilityOn);
         updateSwitchText(volatilityAlarmSwitch, isVolatilityOn);
 
+        if (referencePriceStr != null) {
+            try {
+                double refPrice = Double.parseDouble(referencePriceStr);
+                volatilityReferencePriceTextView.setText(String.format(java.util.Locale.US, "%.3f", refPrice));
+            } catch (NumberFormatException e){
+                volatilityReferencePriceTextView.setText("Error");
+            }
+        } else {
+            volatilityReferencePriceTextView.setText("Not Set");
+        }
+        volatilityCurrentChangeTextView.setText("---"); // Reset on load, will update with price fetch
+
         Log.d(TAG, "Settings loaded: HighPrice=" + highPriceStr + ", HighOn=" + isHighOn +
                 ", LowPrice=" + lowPriceStr + ", LowOn=" + isLowOn +
-                ", VolatilityThreshold=" + volatilityThreshold + ", VolatilityOn=" + isVolatilityOn);
+                ", VolatilityThreshold=" + volatilityThreshold + ", VolatilityOn=" + isVolatilityOn +
+                ", VolatilityRef=" + (referencePriceStr != null ? referencePriceStr : "null"));
 
         isLoading = false;
     }
@@ -414,6 +427,7 @@ public class AlarmActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     currentPriceTextView.setText("API Error");
                     currentCryptoSymbolTextView.setText("?");
+                    volatilityCurrentChangeTextView.setText("Error");
                 });
             }
             return;
@@ -426,19 +440,40 @@ public class AlarmActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     double currentPrice = response.body().getPrice();
                     String symbol = response.body().getSymbol();
-                    if (currentPriceTextView != null && currentCryptoSymbolTextView != null) {
+                    String referencePriceStr = sharedPreferences.getString(PREF_VOLATILITY_REFERENCE_PRICE, null);
+                    String percentageChangeStr = "---";
+
+                    if (referencePriceStr != null) {
+                        try {
+                            double referencePrice = Double.parseDouble(referencePriceStr);
+                            if (referencePrice > 0) {
+                                double percentageChange = ((currentPrice - referencePrice) / referencePrice) * 100.0;
+                                percentageChangeStr = String.format(java.util.Locale.US, "%.2f%%", percentageChange);
+                            } else {
+                                percentageChangeStr = "Ref Err";
+                            }
+                        } catch (NumberFormatException e) {
+                            percentageChangeStr = "Ref Err";
+                            Log.e(TAG, "Error parsing reference price for change calculation: " + referencePriceStr);
+                        }
+                    }
+
+                    if (currentPriceTextView != null && currentCryptoSymbolTextView != null && volatilityCurrentChangeTextView != null) {
+                        final String finalPercentageChangeStr = percentageChangeStr;
                         runOnUiThread(() -> {
                             currentCryptoSymbolTextView.setText(symbol);
                             currentPriceTextView.setText(String.format(java.util.Locale.US, "%.3f", currentPrice));
+                            volatilityCurrentChangeTextView.setText(finalPercentageChangeStr);
                         });
                     }
                 } else {
                     Log.e(TAG, "fetchCurrentPrice - Erreur API : " + response.code());
-                    if (currentPriceTextView != null && currentCryptoSymbolTextView != null) {
+                    if (currentPriceTextView != null && currentCryptoSymbolTextView != null && volatilityCurrentChangeTextView != null) {
                         final int responseCode = response.code();
                         runOnUiThread(() -> {
                             currentPriceTextView.setText("API Err:" + responseCode);
                             currentCryptoSymbolTextView.setText("Error");
+                            volatilityCurrentChangeTextView.setText("Error");
                         });
                     }
                 }
@@ -446,10 +481,11 @@ public class AlarmActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call<BinancePriceResponse> call, Throwable t) {
                 Log.e(TAG, "fetchCurrentPrice - Échec requête API : " + t.getMessage());
-                if (currentPriceTextView != null && currentCryptoSymbolTextView != null) {
+                if (currentPriceTextView != null && currentCryptoSymbolTextView != null && volatilityCurrentChangeTextView != null) {
                     runOnUiThread(() -> {
                         currentPriceTextView.setText("Network Err");
                         currentCryptoSymbolTextView.setText("?");
+                        volatilityCurrentChangeTextView.setText("Error");
                     });
                 }
             }

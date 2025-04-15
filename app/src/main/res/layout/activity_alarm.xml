@@ -148,10 +148,53 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="Activate &amp; Set Ref. Price Now"
+        android:text="Set Current Price as Reference"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/volatilityThresholdEditText"/>
+
+    <TextView
+        android:id="@+id/volatilityReferencePriceLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Reference Price:"
+        android:textSize="14sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/setVolatilityReferenceButton" />
+
+    <TextView
+        android:id="@+id/volatilityReferencePriceTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:text="Not Set"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        app:layout_constraintBaseline_toBaselineOf="@+id/volatilityReferencePriceLabel"
+        app:layout_constraintStart_toEndOf="@+id/volatilityReferencePriceLabel" />
+
+    <TextView
+        android:id="@+id/volatilityCurrentChangeLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:text="Current Change:"
+        android:textSize="14sp"
+        app:layout_constraintBaseline_toBaselineOf="@+id/volatilityReferencePriceLabel"
+        app:layout_constraintStart_toEndOf="@+id/volatilityReferencePriceTextView" />
+
+    <TextView
+        android:id="@+id/volatilityCurrentChangeTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:text="---"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        app:layout_constraintBaseline_toBaselineOf="@+id/volatilityCurrentChangeLabel"
+        app:layout_constraintStart_toEndOf="@+id/volatilityCurrentChangeLabel" />
+
 
     <Button
         android:id="@+id/mainActivityButton"
@@ -165,7 +208,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/setVolatilityReferenceButton"
+        app:layout_constraintTop_toBottomOf="@+id/volatilityReferencePriceLabel"
         app:layout_constraintVertical_bias="1.0"/>
 
 

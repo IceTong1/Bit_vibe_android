@@ -179,14 +179,12 @@ public class AlarmCheckService extends Service {
         boolean isVolatilityAlarmOn = prefs.getBoolean(PREF_IS_VOLATILITY_ALARM_ON, false);
 
         if (!isVolatilityAlarmOn) {
-
             return;
         }
 
         float volatilityThreshold = prefs.getFloat(PREF_VOLATILITY_THRESHOLD, -1.0f);
         String referencePriceStr = prefs.getString(PREF_VOLATILITY_REFERENCE_PRICE, null);
         int selectedNotificationType = prefs.getInt(PREF_NOTIFICATION_TYPE, DEFAULT_NOTIFICATION_TYPE);
-
 
         if (volatilityThreshold <= 0 || referencePriceStr == null) {
             Log.w(TAG, "Volatility check skipped: Invalid threshold ("+volatilityThreshold+") or missing reference price.");
@@ -216,18 +214,13 @@ public class AlarmCheckService extends Service {
                     sendBraceletNotification(RIGHT_BRACELET_MAC, selectedNotificationType);
                     showToastNotification("Volatility Alarm: Price DOWN " + String.format("%.2f", percentageChange) + "%");
                 }
-
-
-
-
+                // Note: We do not disable the volatility alarm or change reference price here
             }
 
         } catch (NumberFormatException e) {
             Log.e(TAG, "Error parsing volatility reference price: " + referencePriceStr, e);
-
-
-
-
+            // Potentially disable alarm if reference is permanently bad? Or just log.
+            // For now, just log the error. The alarm remains ON but won't trigger.
         }
     }
 
